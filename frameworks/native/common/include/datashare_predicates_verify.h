@@ -19,6 +19,7 @@
 #include <utility>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "datashare_predicates.h"
 
@@ -30,6 +31,7 @@ public:
     DataSharePredicatesVerify() = default;
     ~DataSharePredicatesVerify() = default;
     std::pair<int, int> VerifyPredicates(const DataSharePredicates &predicates);
+    bool VerifyColumns(const std::vector<std::string> &columns);
 
 private:
     enum class PredicatesVerifyType {

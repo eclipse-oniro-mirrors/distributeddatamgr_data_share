@@ -135,6 +135,11 @@ bool DataSharePredicatesVerify::CheckParamNum(const PredicatesVerifyType &verify
     return (item.singleParams.size() > 0);
 }
 
+bool DataSharePredicatesVerify::VerifyColumns(const std::vector<std::string> &columns)
+{
+    return VerifyFields(columns);
+}
+
 bool DataSharePredicatesVerify::VerifyField(const std::string &field)
 {
     if (field.empty()) {

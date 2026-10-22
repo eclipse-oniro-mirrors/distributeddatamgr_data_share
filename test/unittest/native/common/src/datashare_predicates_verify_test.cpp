@@ -389,5 +389,132 @@ HWTEST_F(DataSharePredicatesVerifyTest, VerifyFields001, TestSize.Level0)
     EXPECT_TRUE(ret);
     LOG_INFO("DataSharePredicatesVerifyTest VerifyFields001::End");
 }
+
+/**
+* @tc.name: VerifyColumns001
+* @tc.desc: Verify VerifyColumns rejects SQL injection payloads in query columns
+* @tc.type: FUNC
+* @tc.require: None
+* @tc.precon: None
+* @tc.step:
+    1. Verify comment injection breaking out of the select list
+    2. Verify comment suffix and block comment payloads
+    3. Verify subquery payloads
+    4. Verify stacked statement payload
+    5. Verify expression and star payloads
+    6. Verify UNION payload
+    7. Verify quote breakout payload with trailing comment
+    8. Verify inner space and hyphen payloads
+    9. Verify one malicious column among normal columns
+* @tc.experct:
+    1. All verifications return false
+*/
+HWTEST_F(DataSharePredicatesVerifyTest, VerifyColumns001, TestSize.Level0)
+{
+    LOG_INFO("DataSharePredicatesVerifyTest VerifyColumns001::Start");
+    DataSharePredicatesVerify predicatesVerify;
+    // comment injection closing the rest of the generated select sql
+    std::vector<std::string> columns = { "* FROM sqlite_master --" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // comment suffix and block comment
+    columns = { "name --" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+    columns = { "name/*x*/" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // subquery exfiltration
+    columns = { "(SELECT group_concat(name) FROM sqlite_master) AS leak" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+    columns = { "(SELECT pwd FROM secret_table)" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // stacked statement
+    columns = { "name; DROP TABLE t" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // star and function expression
+    columns = { "*" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+    columns = { "count(*)" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // union
+    columns = { "name UNION SELECT 1" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // quote breakout
+    columns = { "\"name\" -- " };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // inner space and hyphen are not part of a legal identifier
+    columns = { "a b" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+    columns = { "a-b" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+
+    // one malicious column among normal columns
+    columns = { "name", "age", "* FROM t --" };
+    EXPECT_FALSE(predicatesVerify.VerifyColumns(columns));
+    LOG_INFO("DataSharePredicatesVerifyTest VerifyColumns001::End");
+}
+
+/**
+* @tc.name: VerifyColumns002
+* @tc.desc: Verify VerifyColumns accepts legitimate query column formats
+* @tc.type: FUNC
+* @tc.require: None
+* @tc.precon: None
+* @tc.step:
+    1. Verify plain column names
+    2. Verify empty column list
+    3. Verify empty string mixed with normal columns
+    4. Verify leading and trailing spaces
+    5. Verify tableName.columnName format
+    6. Verify storeName.tableName.columnName format
+    7. Verify bracketed and quoted column names
+    8. Verify $.columnName format for kv store
+* @tc.experct:
+    1. All verifications return true
+*/
+HWTEST_F(DataSharePredicatesVerifyTest, VerifyColumns002, TestSize.Level0)
+{
+    LOG_INFO("DataSharePredicatesVerifyTest VerifyColumns002::Start");
+    DataSharePredicatesVerify predicatesVerify;
+    // plain column names
+    std::vector<std::string> columns = { "name", "age_", "col2" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // empty column list means select all
+    columns = {};
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // empty string is skipped by sql builder, keep compatible
+    columns = { "", "name" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // leading and trailing spaces
+    columns = { "  name  " };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // tableName.columnName
+    columns = { "t1.name" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // storeName.tableName.columnName
+    columns = { "store1.t1.name" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // bracketed and quoted column names
+    columns = { "[name]", "(age)" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+    columns = { "\"name\"" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+
+    // $.columnName for kv store
+    columns = { "$.field" };
+    EXPECT_TRUE(predicatesVerify.VerifyColumns(columns));
+    LOG_INFO("DataSharePredicatesVerifyTest VerifyColumns002::End");
+}
 }
 }
