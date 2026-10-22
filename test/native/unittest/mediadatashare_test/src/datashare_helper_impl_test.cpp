@@ -419,8 +419,8 @@ HWTEST_F(DataShareHelperImplTest, DelQueryTemplateTest001, TestSize.Level0)
  * @tc.require: issueIC8OCN
  * @tc.precon:
     1. The DataShareHelperImpl instance is properly initialized via DataShareHelperImplTest::GetInstance().
-    2. The test environment does not have the data share service (ddms) available, so the service proxy cannot be
-       obtained and the IPC path fails.
+    2. The test environment does not have the data share service (distributeddatamgr service) available, so the
+       service proxy cannot be obtained and the IPC path fails.
     3. The CleanInvalidData function accepts std::vector<std::string> (validFormIds) as the input parameter and
        returns int.
  * @tc.step:
