@@ -640,6 +640,8 @@ pub mod ffi {
 
         fn DataShareNativeDelTemplate(dataShareHelperPtr: i64, uri: String, subscriberId: String) -> i32;
 
+        fn DataShareNativeCleanInvalidData(dataShareHelperPtr: i64, validFormIds: Vec<String>) -> i32;
+
         fn DataShareNativeInsert(
             dataShareHelperPtr: i64,
             strUri: String,

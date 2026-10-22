@@ -31,6 +31,8 @@ public:
 
     int DelQueryTemplate(const std::string &uri, int64_t subscriberId);
 
+    int CleanInvalidData(const std::vector<std::string> &validFormIds);
+
     std::vector<OperationResult> SubscribeRdbData(void *subscriber, const std::vector<std::string> &uris,
         const TemplateId &templateId, std::function<void(const RdbChangeNode &)> callback);
 

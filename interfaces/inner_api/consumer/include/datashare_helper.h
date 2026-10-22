@@ -399,6 +399,14 @@ public:
     virtual int DelQueryTemplate(const std::string &uri, int64_t subscriberId) = 0;
 
     /**
+     * @brief Cleans up invalid templates of {@link #SubscribeRdbData}.
+     * @param validFormIds, the valid form ids to keep, each of which is the same as the
+     *        subscriberId passed in {@link #AddQueryTemplate}.
+     * @return Returns the error code.
+     */
+    virtual int CleanInvalidData(const std::vector<std::string> &validFormIds) = 0;
+
+    /**
      * @brief Update a single data into host data area.
      * @param data, the data to publish.
      * @param bundleName the bundleName of data to publish.

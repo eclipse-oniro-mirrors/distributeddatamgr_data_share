@@ -43,6 +43,7 @@ public:
     static napi_value Napi_NotifyChange(napi_env env, napi_callback_info info);
     static napi_value Napi_AddTemplate(napi_env env, napi_callback_info info);
     static napi_value Napi_DelTemplate(napi_env env, napi_callback_info info);
+    static napi_value Napi_CleanInvalidData(napi_env env, napi_callback_info info);
     static napi_value Napi_Publish(napi_env env, napi_callback_info info);
     static napi_value Napi_GetPublishedData(napi_env env, napi_callback_info info);
     static napi_value EnableSilentProxy(napi_env env, napi_callback_info info);
@@ -115,6 +116,7 @@ private:
         Data publishData;
         std::string bundleName;
         std::vector<OperationResult> results;
+        std::vector<std::string> validFormIds;
         UpdateOperations updateOperations;
         std::vector<BatchUpdateResult> batchUpdateResult;
         DataShareObserver::ChangeInfo changeInfo;

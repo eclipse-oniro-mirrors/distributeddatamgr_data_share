@@ -475,6 +475,21 @@ pub fn native_del_template<'local>(
 }
 
 #[ani_rs::native]
+pub fn native_clean_invalid_data<'local>(
+    env: &AniEnv<'local>,
+    object: AniObject<'local>,
+    valid_form_ids: Vec<String>,
+) -> Result<(), BusinessError> {
+    let datashare_helper_ptr = get_native_ptr(&env, &object);
+
+    let err_code = wrapper::ffi::DataShareNativeCleanInvalidData(datashare_helper_ptr, valid_form_ids);
+    if err_code != 0 {
+        return Err(convert_to_business_error(err_code));
+    }
+    return Ok(());
+}
+
+#[ani_rs::native]
 pub fn native_insert<'local>(
     env: &AniEnv<'local>,
     datashare_helper: AniObject<'local>,

@@ -37,6 +37,7 @@ namespace OHOS {
 namespace DataShare {
 static constexpr int MAX_ARGC = 6;
 static constexpr int EXCEPTION_SYSTEMAPP_CHECK = 202;
+static constexpr size_t MAX_VALID_FORM_IDS = 50;
 static thread_local napi_ref constructor_ = nullptr;
 
 static bool IsSystemApp()
@@ -260,6 +261,7 @@ napi_value NapiDataShareHelper::GetConstructor(napi_env env)
         DECLARE_NAPI_FUNCTION("notifyChange", Napi_NotifyChange),
         DECLARE_NAPI_FUNCTION("addTemplate", Napi_AddTemplate),
         DECLARE_NAPI_FUNCTION("delTemplate", Napi_DelTemplate),
+        DECLARE_NAPI_FUNCTION("cleanInvalidData", Napi_CleanInvalidData),
         DECLARE_NAPI_FUNCTION("publish", Napi_Publish),
         DECLARE_NAPI_FUNCTION("getPublishedData", Napi_GetPublishedData),
         DECLARE_NAPI_FUNCTION("close", Napi_Close),
@@ -781,6 +783,52 @@ napi_value NapiDataShareHelper::Napi_DelTemplate(napi_env env, napi_callback_inf
     NAPI_ASSERT_CALL_ERRCODE_SYNC(env, res != E_URI_NOT_EXIST && res != E_BUNDLE_NAME_NOT_EXIST,
         error = std::make_shared<UriNotExistError>(), error, nullptr);
     return DataShareJSUtils::Convert2JSValue(env, res);
+}
+
+napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callback_info info)
+{
+    auto context = std::make_shared<ContextInfo>();
+    auto input = [context](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        if (!IsSystemApp()) {
+            context->error = std::make_shared<BusinessError>(EXCEPTION_SYSTEMAPP_CHECK, "not system app");
+            return napi_generic_failure;
+        }
+        if (argc != 1) {
+            context->error = std::make_shared<ParametersNumError>("1");
+            return napi_invalid_arg;
+        }
+        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validFormIds) != napi_ok
+            || context->validFormIds.size() > MAX_VALID_FORM_IDS) {
+            context->error = std::make_shared<ParametersTypeError>("validFormIds", "Array<string>");
+            return napi_invalid_arg;
+        }
+        return napi_ok;
+    };
+    auto output = [context](napi_env env, napi_value *result) -> napi_status {
+        napi_get_null(env, result);
+        return napi_ok;
+    };
+    auto exec = [context](AsyncCall::Context *ctx) {
+        auto helper = context->proxy->GetHelper();
+        if (helper != nullptr) {
+            auto res = helper->CleanInvalidData(context->validFormIds);
+            if (res == E_NOT_SYSTEM_APP) {
+                context->error = std::make_shared<BusinessError>(EXCEPTION_SYSTEMAPP_CHECK, "not system app");
+                return;
+            }
+            if (res != E_OK) {
+                context->error = std::make_shared<InnerError>();
+                return;
+            }
+            context->status = napi_ok;
+        } else {
+            LOG_ERROR("CleanInvalidData helper is nullptr");
+            context->error = std::make_shared<HelperAlreadyClosedError>();
+        }
+    };
+    context->SetAction(std::move(input), std::move(output));
+    AsyncCall asyncCall(env, info, context);
+    return asyncCall.Call(env, exec);
 }
 
 napi_value NapiDataShareHelper::Napi_Publish(napi_env env, napi_callback_info info)

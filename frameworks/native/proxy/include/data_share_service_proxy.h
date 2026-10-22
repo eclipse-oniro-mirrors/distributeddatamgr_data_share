@@ -40,6 +40,8 @@ public:
 
     int DelQueryTemplate(const std::string &uri, int64_t subscriberId) override;
 
+    int CleanInvalidData(const std::vector<std::string> &validFormIds) override;
+
     std::vector<OperationResult> Publish(const Data &data, const std::string &bundleName) override;
 
     Data GetPublishedData(const std::string &bundleName, int &resultCode) override;

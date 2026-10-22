@@ -289,6 +289,29 @@ int DataShareServiceProxy::DelQueryTemplate(const std::string &uri, int64_t subs
     return reply.ReadInt32();
 }
 
+int DataShareServiceProxy::CleanInvalidData(const std::vector<std::string> &validFormIds)
+{
+    MessageParcel data;
+    if (!data.WriteInterfaceToken(IDataShareService::GetDescriptor())) {
+        LOG_ERROR("Write descriptor failed!");
+        return DATA_SHARE_ERROR;
+    }
+    if (!ITypesUtil::Marshal(data, validFormIds)) {
+        LOG_ERROR("Write to message parcel failed!");
+        return DATA_SHARE_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    int32_t err = Remote()->SendRequest(
+        CastIPCCode(InterfaceCode::DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA), data, reply, option);
+    if (err != NO_ERROR) {
+        LOG_ERROR("CleanInvalidData fail to sendRequest. err: %{public}d", err);
+        return DATA_SHARE_ERROR;
+    }
+    return reply.ReadInt32();
+}
+
 std::vector<OperationResult> DataShareServiceProxy::Publish(const Data &data, const std::string &bundleName)
 {
     std::vector<OperationResult> results;

@@ -514,6 +514,19 @@ int DataShareHelperImpl::DelQueryTemplate(const std::string &uri, int64_t subscr
     return res;
 }
 
+int DataShareHelperImpl::CleanInvalidData(const std::vector<std::string> &validFormIds)
+{
+    auto persistentDataCtl = persistentDataCtl_;
+    if (persistentDataCtl == nullptr) {
+        LOG_ERROR("persistentDataCtl is nullptr");
+        return DATA_SHARE_ERROR;
+    }
+    DataShareServiceProxy::SetSystem(isSystem_);
+    auto res = persistentDataCtl->CleanInvalidData(validFormIds);
+    DataShareServiceProxy::CleanSystem();
+    return res;
+}
+
 std::vector<OperationResult> DataShareHelperImpl::Publish(const Data &data, const std::string &bundleName)
 {
     DISTRIBUTED_DATA_HITRACE(std::string(LOG_TAG) + "::" + std::string(__FUNCTION__));
