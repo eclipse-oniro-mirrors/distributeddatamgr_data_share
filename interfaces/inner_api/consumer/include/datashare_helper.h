@@ -402,9 +402,13 @@ public:
      * @brief Cleans up invalid templates of {@link #SubscribeRdbData}.
      * @param validFormIds, the valid form ids to keep, each of which is the same as the
      *        subscriberId passed in {@link #AddQueryTemplate}.
-     * @return Returns the error code.
+     * @return Returns the error code. Returns E_UNIMPLEMENT by default so that
+     *        existing derived classes keep compiling and behave as before.
      */
-    virtual int CleanInvalidData(const std::vector<std::string> &validFormIds) = 0;
+    virtual int CleanInvalidData(const std::vector<std::string> &validFormIds)
+    {
+        return E_UNIMPLEMENT;
+    }
 
     /**
      * @brief Update a single data into host data area.
