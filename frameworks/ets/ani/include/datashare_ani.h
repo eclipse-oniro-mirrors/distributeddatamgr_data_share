@@ -184,7 +184,7 @@ int DataShareNativeAddTemplate(int64_t dataShareHelperPtr, rust::String uri,
 
 int DataShareNativeDelTemplate(int64_t dataShareHelperPtr, rust::String uri, rust::String subscriberId);
 
-int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validFormIds);
+int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validSubscribers);
 
 I32ResultWrap DataShareNativeInsert(int64_t dataShareHelperPtr, rust::String strUri,
     rust::Vec<ValuesBucketKvItem> bucket);

@@ -37,7 +37,7 @@ namespace OHOS {
 namespace DataShare {
 static constexpr int MAX_ARGC = 6;
 static constexpr int EXCEPTION_SYSTEMAPP_CHECK = 202;
-static constexpr size_t MAX_VALID_FORM_IDS = 50;
+static constexpr size_t MAX_VALID_SUBSCRIBERS = 50;
 static thread_local napi_ref constructor_ = nullptr;
 
 static bool IsSystemApp()
@@ -797,9 +797,9 @@ napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callbac
             context->error = std::make_shared<ParametersNumError>("1");
             return napi_invalid_arg;
         }
-        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validFormIds) != napi_ok
-            || context->validFormIds.size() > MAX_VALID_FORM_IDS) {
-            context->error = std::make_shared<ParametersTypeError>("validFormIds", "Array<string>");
+        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validSubscribers) != napi_ok
+            || context->validSubscribers.size() > MAX_VALID_SUBSCRIBERS) {
+            context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
             return napi_invalid_arg;
         }
         return napi_ok;
@@ -811,7 +811,7 @@ napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callbac
     auto exec = [context](AsyncCall::Context *ctx) {
         auto helper = context->proxy->GetHelper();
         if (helper != nullptr) {
-            auto res = helper->CleanInvalidData(context->validFormIds);
+            auto res = helper->CleanInvalidData(context->validSubscribers);
             if (res == E_NOT_SYSTEM_APP) {
                 context->error = std::make_shared<BusinessError>(EXCEPTION_SYSTEMAPP_CHECK, "not system app");
                 return;

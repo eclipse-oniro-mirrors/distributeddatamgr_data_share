@@ -111,7 +111,7 @@ export namespace dataShare {
 
     delTemplate(uri: string, subscriberId: string): void;
 
-    cleanInvalidData(validFormIds: Array<string>): Promise<void>;
+    cleanInvalidData(validSubscribers: Array<string>): Promise<void>;
 
     onRdbDataChange(
       uris: Array<string>,
@@ -233,7 +233,7 @@ export namespace dataShare {
   export native function native_off_rdb_data_change(obj: DataShareHelper, uris: Array<string>, templateId: TemplateId, callback?: Callback<RdbDataChangeNode>): Array<OperationResult>
   export native function native_on_published_data_change(obj: DataShareHelper, uris: Array<string>, subscriberId: string, callback: Callback<PublishedDataChangeNode>): Array<OperationResult>
   export native function native_off_published_data_change(obj: DataShareHelper, uris: Array<string>, subscriberId: string, callback?: Callback<PublishedDataChangeNode>): Array<OperationResult>
-  export native function native_clean_invalid_data(obj: DataShareHelper, validFormIds: Array<string>): void
+  export native function native_clean_invalid_data(obj: DataShareHelper, validSubscribers: Array<string>): void
 
   export function createDataShareHelper(context: Context, uri: string, callback: AsyncCallback<DataShareHelper>): void {
         let p = taskpool.execute(native_create, context, uri, undefined)
@@ -319,9 +319,9 @@ export namespace dataShare {
     native addTemplate(uri: string, subscriberId: string, template: Template): void;
     native delTemplate(uri: string, subscriberId: string): void;
 
-    cleanInvalidData(validFormIds: Array<string>): Promise<void> {
+    cleanInvalidData(validSubscribers: Array<string>): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            let p = taskpool.execute(native_clean_invalid_data, this, validFormIds)
+            let p = taskpool.execute(native_clean_invalid_data, this, validSubscribers)
             p.then(() => {
                 resolve(undefined)
             }).catch((e: Error): void => {

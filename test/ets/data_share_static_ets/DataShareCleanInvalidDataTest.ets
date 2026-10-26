@@ -54,7 +54,7 @@ export default function dataShareCleanInvalidDataTest() {
     /**
      * @tc.number    : SUB_DistributedData_DataShare_SDK_CleanInvalidDataStaticTest_0100
      * @tc.name      : dataShareCleanInvalidDataTest001
-     * @tc.desc      : add templates with multiple subscriber ids, clean invalid data with partial valid form ids
+     * @tc.desc      : add templates with multiple subscriber ids, clean invalid data with partial valid subscriber ids
      * @tc.size      : MediumTest
      * @tc.type      : Function
      * @tc.level     : Level 1
@@ -73,8 +73,8 @@ export default function dataShareCleanInvalidDataTest() {
           dsHelper.addTemplate(dseUri, "1", template);
           dsHelper.addTemplate(dseUri, "2", template);
           dsHelper.addTemplate(dseUri, "3", template);
-          let validFormIds: Array<string> = ["1", "2"];
-          dsHelper.cleanInvalidData(validFormIds).then(() => {
+          let validSubscribers: Array<string> = ["1", "2"];
+          dsHelper.cleanInvalidData(validSubscribers).then(() => {
             console.info(TAG + "clean success");
             expect(true).assertTrue();
             done();

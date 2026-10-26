@@ -1207,14 +1207,14 @@ int DataShareNativeDelTemplate(int64_t dataShareHelperPtr, rust::String uri, rus
     return E_OK;
 }
 
-int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validFormIds)
+int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validSubscribers)
 {
     auto helperHolder = reinterpret_cast<SharedPtrHolder *>(dataShareHelperPtr);
     if (helperHolder == nullptr || helperHolder->datashareHelper_ == nullptr) {
         LOG_ERROR("CleanInvalidData failed, helper is nullptr.");
         return EXCEPTION_HELPER_CLOSED;
     }
-    std::vector<std::string> stdFormIds = convert_rust_vec_to_cpp_vector(validFormIds);
+    std::vector<std::string> stdFormIds = convert_rust_vec_to_cpp_vector(validSubscribers);
     auto result = helperHolder->datashareHelper_->CleanInvalidData(stdFormIds);
     if (result == E_NOT_SYSTEM_APP) {
         LOG_ERROR("CleanInvalidData failed, not system app.");

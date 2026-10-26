@@ -514,17 +514,16 @@ int DataShareHelperImpl::DelQueryTemplate(const std::string &uri, int64_t subscr
     return res;
 }
 
-int DataShareHelperImpl::CleanInvalidData(const std::vector<std::string> &validFormIds)
+int DataShareHelperImpl::CleanInvalidData(const std::vector<std::string> &validSubscribers)
 {
     auto persistentDataCtl = persistentDataCtl_;
     if (persistentDataCtl == nullptr) {
         LOG_ERROR("persistentDataCtl is nullptr");
         return DATA_SHARE_ERROR;
     }
-    DataShareServiceProxy::SetSystem(isSystem_);
-    auto res = persistentDataCtl->CleanInvalidData(validFormIds);
-    DataShareServiceProxy::CleanSystem();
-    return res;
+    // No SetSystem/CleanSystem wrapping: cleanInvalidData is a system API and
+    // the proxy always sends the _SYSTEM command code directly.
+    return persistentDataCtl->CleanInvalidData(validSubscribers);
 }
 
 std::vector<OperationResult> DataShareHelperImpl::Publish(const Data &data, const std::string &bundleName)

@@ -116,7 +116,7 @@ private:
         Data publishData;
         std::string bundleName;
         std::vector<OperationResult> results;
-        std::vector<std::string> validFormIds;
+        std::vector<std::string> validSubscribers;
         UpdateOperations updateOperations;
         std::vector<BatchUpdateResult> batchUpdateResult;
         DataShareObserver::ChangeInfo changeInfo;

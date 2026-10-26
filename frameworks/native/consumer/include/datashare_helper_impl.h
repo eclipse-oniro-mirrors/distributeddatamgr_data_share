@@ -114,7 +114,7 @@ public:
 
     int DelQueryTemplate(const string &uri, int64_t subscriberId) override;
 
-    int CleanInvalidData(const std::vector<std::string> &validFormIds) override;
+    int CleanInvalidData(const std::vector<std::string> &validSubscribers) override;
 
     std::vector<OperationResult> Publish(const Data &data, const string &bundleName) override;
 

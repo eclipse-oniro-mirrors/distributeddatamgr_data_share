@@ -43,7 +43,7 @@ export default function DataShareCleanInvalidDataTest() {
     /**
     * @tc.number: SUB_DistributedData_DataShare_SDK_CleanInvalidDataTest_0100
     * @tc.name: cleanInvalidDataTest001
-    * @tc.desc: add templates with multiple subscriber ids, clean invalid data with partial valid form ids
+    * @tc.desc: add templates with multiple subscriber ids, clean invalid data with partial valid subscriber ids
     * @tc.size: MediumTest
     * @tc.type: Function
     * @tc.level: Level 1
@@ -62,8 +62,8 @@ export default function DataShareCleanInvalidDataTest() {
         helper.addTemplate(cardUri, "1", template);
         helper.addTemplate(cardUri, "2", template);
         helper.addTemplate(cardUri, "3", template);
-        let validFormIds: Array<string> = ["1", "2"];
-        helper.cleanInvalidData(validFormIds).then(() => {
+        let validSubscribers: Array<string> = ["1", "2"];
+        helper.cleanInvalidData(validSubscribers).then(() => {
           console.info(TAG + "cleanInvalidDataTest001 clean success");
           expect(true).assertTrue();
           done();

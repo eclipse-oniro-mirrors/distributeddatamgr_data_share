@@ -52,7 +52,7 @@ public:
 
     virtual int DelQueryTemplate(const std::string &uri, int64_t subscriberId) = 0;
 
-    virtual int CleanInvalidData(const std::vector<std::string> &validFormIds) = 0;
+    virtual int CleanInvalidData(const std::vector<std::string> &validSubscribers) = 0;
 
     virtual std::vector<OperationResult> Publish(const Data &data, const std::string &bundleName) = 0;
 
