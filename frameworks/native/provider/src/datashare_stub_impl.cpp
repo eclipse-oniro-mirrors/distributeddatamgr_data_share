@@ -173,6 +173,20 @@ int DataShareStubImpl::OpenFile(const Uri &uri, const std::string &mode)
     if (extension == nullptr) {
         return DEFAULT_NUMBER;
     }
+    bool needWrite = (mode.find('w') != std::string::npos);
+    if (needWrite) {
+        if (!CheckCallingPermission(extension->abilityInfo_->writePermission)) {
+            LOG_ERROR("OpenFile check write permission failed.");
+            return PERMISSION_ERROR_NUMBER;
+        }
+    }
+    bool needRead = (mode.find('r') != std::string::npos);
+    if (needRead) {
+        if (!CheckCallingPermission(extension->abilityInfo_->readPermission)) {
+            LOG_ERROR("OpenFile check read permission failed.");
+            return PERMISSION_ERROR_NUMBER;
+        }
+    }
     auto result = std::make_shared<ResultWrap>();
     int ret = -1;
     std::function<void()> syncTaskFunc = [extension, info, uri, mode, result]() {
@@ -206,7 +220,20 @@ int DataShareStubImpl::OpenRawFile(const Uri &uri, const std::string &mode)
     if (extension == nullptr) {
         return DEFAULT_NUMBER;
     }
-
+    bool needWrite = (mode.find('w') != std::string::npos);
+    if (needWrite) {
+        if (!CheckCallingPermission(extension->abilityInfo_->writePermission)) {
+            LOG_ERROR("OpenRawFile check write permission failed.");
+            return PERMISSION_ERROR_NUMBER;
+        }
+    }
+    bool needRead = (mode.find('r') != std::string::npos);
+    if (needRead) {
+        if (!CheckCallingPermission(extension->abilityInfo_->readPermission)) {
+            LOG_ERROR("OpenRawFile check read permission failed.");
+            return PERMISSION_ERROR_NUMBER;
+        }
+    }
     std::shared_ptr<int> ret = std::make_shared<int>(-1);
     std::function<void()> syncTaskFunc = [extension, ret, info, uri, mode]() {
         extension->SetCallingInfo(info);

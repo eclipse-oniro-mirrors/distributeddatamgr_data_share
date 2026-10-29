@@ -82,6 +82,12 @@ public:
     {
     }
 
+    ~DataProxyHandleHolder()
+    {
+        jsProxyDataObsManager_.reset();
+        dataProxyHandle_.reset();
+    }
+
 public:
     std::shared_ptr<DataProxyHandle> dataProxyHandle_ = nullptr;
     std::shared_ptr<AniProxyDataSubscriberManager> jsProxyDataObsManager_ = nullptr;

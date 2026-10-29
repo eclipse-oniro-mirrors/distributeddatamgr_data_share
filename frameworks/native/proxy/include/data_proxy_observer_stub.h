@@ -35,6 +35,7 @@ private:
     int RecoverRdbChangeNodeData(RdbChangeNode &changeNode);
     int DeserializeDataFromAshmem(RdbChangeNode &changeNode);
     int ReadAshmem(RdbChangeNode &changeNode, const void **data, int size, int &offset);
+    int ReadDataItem(RdbChangeNode &changeNode, int intLen, int &offset, int index);
     std::mutex mutex_;
     RdbCallback callback_;
 };
