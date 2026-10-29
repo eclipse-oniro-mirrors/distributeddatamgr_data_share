@@ -92,7 +92,7 @@ void DataShareHelperProxyTest::SetUpTestCase(void)
 
 void DataShareHelperProxyTest::TearDownTestCase(void)
 {
-    auto tokenId = AccessTokenKit::GetHapTokenID(100, "ohos.datashareclienttest.demo", 0);
+    auto tokenId = AccessTokenKit::GetHapTokenID(100, "ohos.datashareproxyclienttest.demo", 0);
     AccessTokenKit::DeleteToken(tokenId);
     dataShareHelper = nullptr;
     dataShareHelper2 = nullptr;

@@ -73,8 +73,7 @@ void DataProxyHandleTest::SetUpTestCase(void)
 
 void DataProxyHandleTest::TearDownTestCase(void)
 {
-    auto tokenId = AccessTokenKit::GetHapTokenID(100, "com.acts.datasharetest", 0);
-    AccessTokenKit::DeleteToken(tokenId);
+    LOG_INFO("TearDownTestCase invoked");
 }
 
 void DataProxyHandleTest::SetUp(void)
