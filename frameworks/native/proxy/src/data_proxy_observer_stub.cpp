@@ -65,6 +65,35 @@ int RdbObserverStub::ReadAshmem(RdbChangeNode &changeNode, const void **data, in
     return E_OK;
 }
 
+int RdbObserverStub::ReadDataItem(RdbChangeNode &changeNode, int intLen, int &offset, int index)
+{
+    const int *dataLenRead;
+    if (ReadAshmem(changeNode, (const void **)&dataLenRead, intLen, offset) != E_OK) {
+        LOG_ERROR("failed to read data with index %{public}d, len %{public}d, offset %{public}d.", index, intLen,
+            offset);
+        return E_ERROR;
+    }
+    int dataLen = *dataLenRead;
+    if (dataLen < 0) {
+        LOG_ERROR("dataLen is invalid: %{public}d, index %{public}d", dataLen, index);
+        return E_ERROR;
+    }
+    if (offset > changeNode.size_ || dataLen > changeNode.size_ - offset) {
+        LOG_ERROR("dataLen %{public}d exceeds remaining declared size, index %{public}d, offset %{public}d, "
+                  "size %{public}d", dataLen, index, offset, changeNode.size_);
+        return E_ERROR;
+    }
+    const char *dataRead;
+    if (ReadAshmem(changeNode, (const void **)&dataRead, dataLen, offset) != E_OK) {
+        LOG_ERROR("failed to read data with index %{public}d, len %{public}d, offset %{public}d.", index, dataLen,
+            offset);
+        return E_ERROR;
+    }
+    std::string data(dataRead, dataLen);
+    changeNode.data_.push_back(data);
+    return E_OK;
+}
+
 int RdbObserverStub::DeserializeDataFromAshmem(RdbChangeNode &changeNode)
 {
     if (changeNode.memory_ == nullptr) {
@@ -79,7 +108,10 @@ int RdbObserverStub::DeserializeDataFromAshmem(RdbChangeNode &changeNode)
         return E_ERROR;
     }
     LOG_DEBUG("receive data size: %{public}d", changeNode.size_);
-    // Read data size
+    if (changeNode.size_ < 0 || changeNode.size_ > DATA_SIZE_ASHMEM_TRANSFER_LIMIT) {
+        LOG_ERROR("changeNode.size_ is invalid: %{public}d", changeNode.size_);
+        return E_ERROR;
+    }
     int intLen = 4;
     int offset = 0;
     const int *vecLenRead;
@@ -92,23 +124,10 @@ int RdbObserverStub::DeserializeDataFromAshmem(RdbChangeNode &changeNode)
         LOG_ERROR("vecLen is invalid: %{public}d", vecLen);
         return E_ERROR;
     }
-    // Read data
     for (int i = 0; i < vecLen; i++) {
-        const int *dataLenRead;
-        if (ReadAshmem(changeNode, (const void **)&dataLenRead, intLen, offset) != E_OK) {
-            LOG_ERROR(
-                "failed to read data with index %{public}d, len %{public}d, offset %{public}d.", i, intLen, offset);
+        if (ReadDataItem(changeNode, intLen, offset, i) != E_OK) {
             return E_ERROR;
         }
-        int dataLen = *dataLenRead;
-        const char *dataRead;
-        if (ReadAshmem(changeNode, (const void **)&dataRead, dataLen, offset) != E_OK) {
-            LOG_ERROR(
-                "failed to read data with index %{public}d, len %{public}d, offset %{public}d.", i, dataLen, offset);
-            return E_ERROR;
-        }
-        std::string data(dataRead, dataLen);
-        changeNode.data_.push_back(data);
     }
     return E_OK;
 }
