@@ -1214,8 +1214,12 @@ int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::
         LOG_ERROR("CleanInvalidData failed, helper is nullptr.");
         return EXCEPTION_HELPER_CLOSED;
     }
-    std::vector<std::string> stdFormIds = convert_rust_vec_to_cpp_vector(validSubscribers);
-    auto result = helperHolder->datashareHelper_->CleanInvalidData(stdFormIds);
+    if (validSubscribers.empty() || validSubscribers.size() > MAX_VALID_SUBSCRIBERS) {
+        LOG_ERROR("CleanInvalidData failed, validSubscribers size is invalid.");
+        return EXCEPTION_SUBSCRIBERS_SIZE_INVALID;
+    }
+    std::vector<std::string> stdSubscribers = convert_rust_vec_to_cpp_vector(validSubscribers);
+    auto result = helperHolder->datashareHelper_->CleanInvalidData(stdSubscribers);
     if (result == E_NOT_SYSTEM_APP) {
         LOG_ERROR("CleanInvalidData failed, not system app.");
         return EXCEPTION_SYSTEMAPP_CHECK;

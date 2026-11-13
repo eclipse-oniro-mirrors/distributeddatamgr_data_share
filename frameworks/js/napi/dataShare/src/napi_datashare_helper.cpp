@@ -797,8 +797,20 @@ napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callbac
             context->error = std::make_shared<ParametersNumError>("1");
             return napi_invalid_arg;
         }
-        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validSubscribers) != napi_ok
-            || context->validSubscribers.size() > MAX_VALID_SUBSCRIBERS) {
+        bool isArray = false;
+        napi_is_array(env, argv[0], &isArray);
+        if (!isArray) {
+            context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
+            return napi_invalid_arg;
+        }
+        uint32_t length = 0;
+        napi_get_array_length(env, argv[0], &length);
+        if (length == 0 || length > MAX_VALID_SUBSCRIBERS) {
+            context->error = std::make_shared<BusinessError>(EXCEPTION_SUBSCRIBERS_SIZE_INVALID,
+                "the validSubscribers array is empty or contains more than 50 elements");
+            return napi_generic_failure;
+        }
+        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validSubscribers) != napi_ok) {
             context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
             return napi_invalid_arg;
         }

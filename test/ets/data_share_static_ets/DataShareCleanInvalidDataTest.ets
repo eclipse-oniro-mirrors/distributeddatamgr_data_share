@@ -188,7 +188,7 @@ export default function dataShareCleanInvalidDataTest() {
     /**
      * @tc.number    : SUB_DistributedData_DataShare_SDK_CleanInvalidDataStaticTest_0400
      * @tc.name      : dataShareCleanInvalidDataTest004
-     * @tc.desc      : clean invalid data with invalid parameters, expect 401
+     * @tc.desc      : clean invalid data with invalid parameters, expect 15700016
      * @tc.size      : MediumTest
      * @tc.type      : Function
      * @tc.level     : Level 1
@@ -205,7 +205,7 @@ export default function dataShareCleanInvalidDataTest() {
           }).catch((error) => {
             let err = error as BusinessError;
             console.error(`empty error: code: ${err.code}, message: ${err.message} `);
-            expect(err.code == 401).assertTrue();
+            expect(err.code == 15700016).assertTrue();
             let overSizeFormIds: Array<string> = [];
             for (let i = 0; i < 51; i++) {
               overSizeFormIds.push(`${i}`);
@@ -217,7 +217,7 @@ export default function dataShareCleanInvalidDataTest() {
             }).catch((error2) => {
               let err2 = error2 as BusinessError;
               console.error(`over size error: code: ${err2.code}, message: ${err2.message} `);
-              expect(err2.code == 401).assertTrue();
+              expect(err2.code == 15700016).assertTrue();
               done();
             });
           });
