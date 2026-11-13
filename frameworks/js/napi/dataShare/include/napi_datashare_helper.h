@@ -146,6 +146,8 @@ private:
     static void ExecuteCreator(std::shared_ptr<CreateContextInfo> ctxInfo);
     static napi_status ValidateCreateParam(napi_env env, size_t argc, napi_value *argv,
         std::shared_ptr<CreateContextInfo> ctxInfo);
+    static napi_status ValidateCleanInvalidDataParam(napi_env env, size_t argc, napi_value *argv,
+        std::shared_ptr<ContextInfo> context);
 };
 } // namespace DataShare
 } // namespace OHOS

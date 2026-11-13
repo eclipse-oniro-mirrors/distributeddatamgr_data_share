@@ -38,6 +38,7 @@ namespace DataShare {
 static constexpr int MAX_ARGC = 6;
 static constexpr int EXCEPTION_SYSTEMAPP_CHECK = 202;
 static constexpr size_t MAX_VALID_SUBSCRIBERS = 50;
+static constexpr int EXCEPTION_SUBSCRIBERS_SIZE_INVALID = 15700016;
 static thread_local napi_ref constructor_ = nullptr;
 
 static bool IsSystemApp()
@@ -785,36 +786,42 @@ napi_value NapiDataShareHelper::Napi_DelTemplate(napi_env env, napi_callback_inf
     return DataShareJSUtils::Convert2JSValue(env, res);
 }
 
+napi_status NapiDataShareHelper::ValidateCleanInvalidDataParam(napi_env env, size_t argc, napi_value *argv,
+    std::shared_ptr<ContextInfo> context)
+{
+    if (!IsSystemApp()) {
+        context->error = std::make_shared<BusinessError>(EXCEPTION_SYSTEMAPP_CHECK, "not system app");
+        return napi_generic_failure;
+    }
+    if (argc != 1) {
+        context->error = std::make_shared<ParametersNumError>("1");
+        return napi_invalid_arg;
+    }
+    bool isArray = false;
+    napi_is_array(env, argv[0], &isArray);
+    if (!isArray) {
+        context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
+        return napi_invalid_arg;
+    }
+    uint32_t length = 0;
+    napi_get_array_length(env, argv[0], &length);
+    if (length == 0 || length > MAX_VALID_SUBSCRIBERS) {
+        context->error = std::make_shared<BusinessError>(EXCEPTION_SUBSCRIBERS_SIZE_INVALID,
+            "the validSubscribers array is empty or contains more than 50 elements");
+        return napi_generic_failure;
+    }
+    if (DataShareJSUtils::Convert2Value(env, argv[0], context->validSubscribers) != napi_ok) {
+        context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
+        return napi_invalid_arg;
+    }
+    return napi_ok;
+}
+
 napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callback_info info)
 {
     auto context = std::make_shared<ContextInfo>();
     auto input = [context](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        if (!IsSystemApp()) {
-            context->error = std::make_shared<BusinessError>(EXCEPTION_SYSTEMAPP_CHECK, "not system app");
-            return napi_generic_failure;
-        }
-        if (argc != 1) {
-            context->error = std::make_shared<ParametersNumError>("1");
-            return napi_invalid_arg;
-        }
-        bool isArray = false;
-        napi_is_array(env, argv[0], &isArray);
-        if (!isArray) {
-            context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
-            return napi_invalid_arg;
-        }
-        uint32_t length = 0;
-        napi_get_array_length(env, argv[0], &length);
-        if (length == 0 || length > MAX_VALID_SUBSCRIBERS) {
-            context->error = std::make_shared<BusinessError>(EXCEPTION_SUBSCRIBERS_SIZE_INVALID,
-                "the validSubscribers array is empty or contains more than 50 elements");
-            return napi_generic_failure;
-        }
-        if (DataShareJSUtils::Convert2Value(env, argv[0], context->validSubscribers) != napi_ok) {
-            context->error = std::make_shared<ParametersTypeError>("validSubscribers", "Array<string>");
-            return napi_invalid_arg;
-        }
-        return napi_ok;
+        return NapiDataShareHelper::ValidateCleanInvalidDataParam(env, argc, argv, context);
     };
     auto output = [context](napi_env env, napi_value *result) -> napi_status {
         napi_get_null(env, result);
