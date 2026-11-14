@@ -35,9 +35,7 @@ class DataShareBlockWriterImpl;
 /**
  * This module provides data resultsets.
  */
-class DataShareResultSet
-    : public DataShareAbsResultSet
-    , public DataShareSharedResultSet {
+class DataShareResultSet : public DataShareAbsResultSet, public DataShareSharedResultSet {
 public:
     DataShareResultSet();
     explicit DataShareResultSet(std::shared_ptr<ResultSetBridge> &bridge, size_t blockSize = DEFAULT_SHARE_BLOCK_SIZE);

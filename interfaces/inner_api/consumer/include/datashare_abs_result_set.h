@@ -57,7 +57,8 @@ public:
      *
      * @return Return 0 if successful.
      */
-    [[deprecated("Use GoToNextRow() instead.")]] int IsAtLastRow(bool &result) override;
+    [[deprecated("Use GoToNextRow() instead.")]]
+    int IsAtLastRow(bool &result) override;
     int IsStarted(bool &result) const override;
     int IsEnded(bool &result) override;
     int GetColumnCount(int &count) override;
