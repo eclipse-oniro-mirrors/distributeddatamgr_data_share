@@ -15,19 +15,25 @@
 
 #define LOG_TAG "datashare_result_set_test"
 
+#include "datashare_result_set.h"
+
 #include <gtest/gtest.h>
 #include <unistd.h>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
+#include "datashare_abs_result_set.h"
 #include "datashare_errno.h"
 #include "datashare_itypes_utils.h"
 #include "datashare_log.h"
-#include "datashare_abs_result_set.h"
-#include "datashare_result_set.h"
 #include "ikvstore_data_service.h"
 #include "ipc_types.h"
 #include "ishared_result_set_stub.h"
 #include "itypes_util.h"
 #include "message_parcel.h"
+#include "result_set_bridge.h"
 #include "shared_block.h"
 
 namespace OHOS {
@@ -333,5 +339,131 @@ HWTEST_F(DatashareResultSetTest, Constructor003, TestSize.Level0)
     ASSERT_EQ(dataShareResultSet->blockWriter_, nullptr);
     LOG_INFO("DatashareResultSetTest Constructor003::End");
 }
+
+/*
+ * Mock bridge used to exercise the GoToRow check-then-OnGo-then-write transaction under concurrency.
+ * Each OnGo loads a single-row window whose column 0 value equals startRowIndex, so a consistent
+ * (rowPos_, startRowPos_) pair always yields GetCellUnit(0, 0) == startRowIndex. A short sleep
+ * widens the OnGo window to simulate IPC/DB latency and make the pre-fix race observable.
+ */
+class ConcurrentBridge : public ResultSetBridge {
+public:
+    static constexpr int32_t ROW_COUNT = 100;
+
+    int GetAllColumnNames(std::vector<std::string> &columnNames) override
+    {
+        columnNames.clear();
+        columnNames.push_back("value");
+        return 0;
+    }
+
+    int GetRowCount(int32_t &count) override
+    {
+        count = ROW_COUNT;
+        return 0;
+    }
+
+    int OnGo(int32_t startRowIndex, int32_t targetRowIndex, Writer &writer) override
+    {
+        std::this_thread::sleep_for(std::chrono::microseconds(20));
+        if (writer.AllocRow() != E_OK) {
+            return -1;
+        }
+        if (writer.Write(0, static_cast<int64_t>(startRowIndex)) != E_OK) {
+            return -1;
+        }
+        // Window of one row: endPos == startRowIndex, so rowPos_ - startRowPos_ == 0 after GoToRow.
+        return startRowIndex;
+    }
+};
+
+/**
+ * @tc.name: GoToRowGetSingleThread001
+ * @tc.desc: Verify GoToRow+GetInt returns the value written for the requested row in a single thread.
+ *           Baseline for the concurrency test: confirms the mock bridge and cursor indexing are correct.
+ * @tc.type: FUNC
+ * @tc.require: None
+ * @tc.step:
+ *     1. Create a DataShareResultSet backed by ConcurrentBridge.
+ *     2. For each position p in [0, ROW_COUNT), call GoToRow(p) then GetInt(0, v).
+ * @tc.expect:
+ *     1. GoToRow returns E_OK and GetInt returns E_OK with v == p.
+ */
+HWTEST_F(DatashareResultSetTest, GoToRowGetSingleThread001, TestSize.Level1)
+{
+    LOG_INFO("DatashareResultSetTest GoToRowGetSingleThread001::Start");
+    std::shared_ptr<ResultSetBridge> bridge = std::make_shared<ConcurrentBridge>();
+    auto resultSet = std::make_shared<DataShareResultSet>(bridge);
+    for (int32_t p = 0; p < ConcurrentBridge::ROW_COUNT; p++) {
+        int ret = resultSet->GoToRow(p);
+        ASSERT_EQ(ret, E_OK);
+        int value = -1;
+        ret = resultSet->GetInt(0, value);
+        ASSERT_EQ(ret, E_OK);
+        ASSERT_EQ(value, p);
+    }
+    LOG_INFO("DatashareResultSetTest GoToRowGetSingleThread001::End");
 }
+
+/**
+ * @tc.name: GoToRowGetIntConcurrent001
+ * @tc.desc: Regression test for bug2 (DataShareResultSet cursor data race + GoToRow atomicity
+ *           violation). Multiple threads concurrently call GoToRow(random position) + GetInt on the
+ *           same DataShareResultSet. Before the fix, interleaved GoToRow transactions leave
+ *           rowPos_/startRowPos_ inconsistent with the SharedBlock content, so rowPos_ - startRowPos_
+ *           can become negative/out-of-range and GetCellUnit returns nullptr, making GetInt return
+ *           E_ERROR sporadically. After the fix, GoToRow is atomic and Get* reads a consistent
+ *           (rowPos_, startRowPos_) pair, so GetInt always returns E_OK for a valid cursor position.
+ * @tc.type: FUNC
+ * @tc.require: None
+ * @tc.step:
+ *     1. Create one DataShareResultSet backed by ConcurrentBridge, shared by all threads.
+ *     2. Spawn THREAD_NUM threads; each iterates ITER_NUM times picking a position p in
+ *        [0, ROW_COUNT), calling GoToRow(p) then GetInt(0, v).
+ *     3. Join all threads.
+ * @tc.expect:
+ *     1. No crash / sanitizer abort.
+ *     2. GetInt never returns E_ERROR (torn cursor index) for the valid positions used.
+ */
+HWTEST_F(DatashareResultSetTest, GoToRowGetIntConcurrent001, TestSize.Level1)
+{
+    LOG_INFO("DatashareResultSetTest GoToRowGetIntConcurrent001::Start");
+    const int THREAD_NUM = 4;
+    const int ITER_NUM = 300;
+    std::shared_ptr<ResultSetBridge> bridge = std::make_shared<ConcurrentBridge>();
+    auto resultSet = std::make_shared<DataShareResultSet>(bridge);
+
+    std::atomic<int> errorCount(0);
+    auto worker = [&]() {
+        for (int i = 0; i < ITER_NUM; i++) {
+            int32_t p = i % ConcurrentBridge::ROW_COUNT;
+            int ret = resultSet->GoToRow(p);
+            if (ret != E_OK) {
+                errorCount.fetch_add(1);
+                continue;
+            }
+            int value = -1;
+            ret = resultSet->GetInt(0, value);
+            // Post-fix: the cursor is always at a valid row, so GetInt must not fail with E_ERROR
+            // (which pre-fix indicated a torn rowPos_ - startRowPos_ index).
+            if (ret != E_OK) {
+                errorCount.fetch_add(1);
+            }
+        }
+    };
+
+    std::vector<std::thread> threads;
+    threads.reserve(THREAD_NUM);
+    for (int t = 0; t < THREAD_NUM; t++) {
+        threads.emplace_back(worker);
+    }
+    for (auto &th : threads) {
+        th.join();
+    }
+    // GoToRow is always called with a valid position, and the cursor state is kept consistent
+    // with the SharedBlock content, so neither GoToRow nor GetInt should ever fail.
+    EXPECT_EQ(errorCount.load(), 0);
+    LOG_INFO("DatashareResultSetTest GoToRowGetIntConcurrent001::End");
 }
+} // namespace DataShare
+} // namespace OHOS
