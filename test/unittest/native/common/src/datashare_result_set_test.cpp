@@ -348,7 +348,10 @@ HWTEST_F(DatashareResultSetTest, Constructor003, TestSize.Level0)
  */
 class ConcurrentBridge : public ResultSetBridge {
 public:
-    static constexpr int32_t ROW_COUNT = 100;
+    static constexpr int32_t rowCount = 100;
+    // Delay injected into OnGo to widen the race window (simulates IPC/DB latency) so that the
+    // pre-fix interleaving is observable. Named to satisfy the no-magic-number rule.
+    static constexpr int onGoDelayUs = 20;
 
     int GetAllColumnNames(std::vector<std::string> &columnNames) override
     {
@@ -359,13 +362,13 @@ public:
 
     int GetRowCount(int32_t &count) override
     {
-        count = ROW_COUNT;
+        count = rowCount;
         return 0;
     }
 
     int OnGo(int32_t startRowIndex, int32_t targetRowIndex, Writer &writer) override
     {
-        std::this_thread::sleep_for(std::chrono::microseconds(20));
+        std::this_thread::sleep_for(std::chrono::microseconds(onGoDelayUs));
         if (writer.AllocRow() != E_OK) {
             return -1;
         }
@@ -385,7 +388,7 @@ public:
  * @tc.require: None
  * @tc.step:
  *     1. Create a DataShareResultSet backed by ConcurrentBridge.
- *     2. For each position p in [0, ROW_COUNT), call GoToRow(p) then GetInt(0, v).
+ *     2. For each position p in [0, rowCount), call GoToRow(p) then GetInt(0, v).
  * @tc.expect:
  *     1. GoToRow returns E_OK and GetInt returns E_OK with v == p.
  */
@@ -394,7 +397,7 @@ HWTEST_F(DatashareResultSetTest, GoToRowGetSingleThread001, TestSize.Level1)
     LOG_INFO("DatashareResultSetTest GoToRowGetSingleThread001::Start");
     std::shared_ptr<ResultSetBridge> bridge = std::make_shared<ConcurrentBridge>();
     auto resultSet = std::make_shared<DataShareResultSet>(bridge);
-    for (int32_t p = 0; p < ConcurrentBridge::ROW_COUNT; p++) {
+    for (int32_t p = 0; p < ConcurrentBridge::rowCount; p++) {
         int ret = resultSet->GoToRow(p);
         ASSERT_EQ(ret, E_OK);
         int value = -1;
@@ -418,8 +421,8 @@ HWTEST_F(DatashareResultSetTest, GoToRowGetSingleThread001, TestSize.Level1)
  * @tc.require: None
  * @tc.step:
  *     1. Create one DataShareResultSet backed by ConcurrentBridge, shared by all threads.
- *     2. Spawn THREAD_NUM threads; each iterates ITER_NUM times picking a position p in
- *        [0, ROW_COUNT), calling GoToRow(p) then GetInt(0, v).
+ *     2. Spawn threadNum threads; each iterates iterNum times picking a position p in
+ *        [0, rowCount), calling GoToRow(p) then GetInt(0, v).
  *     3. Join all threads.
  * @tc.expect:
  *     1. No crash / sanitizer abort.
@@ -428,15 +431,15 @@ HWTEST_F(DatashareResultSetTest, GoToRowGetSingleThread001, TestSize.Level1)
 HWTEST_F(DatashareResultSetTest, GoToRowGetIntConcurrent001, TestSize.Level1)
 {
     LOG_INFO("DatashareResultSetTest GoToRowGetIntConcurrent001::Start");
-    const int THREAD_NUM = 4;
-    const int ITER_NUM = 300;
+    const int threadNum = 4;
+    const int iterNum = 300;
     std::shared_ptr<ResultSetBridge> bridge = std::make_shared<ConcurrentBridge>();
     auto resultSet = std::make_shared<DataShareResultSet>(bridge);
 
     std::atomic<int> errorCount(0);
-    auto worker = [&]() {
-        for (int i = 0; i < ITER_NUM; i++) {
-            int32_t p = i % ConcurrentBridge::ROW_COUNT;
+    auto worker = [&resultSet, &errorCount, iterNum]() {
+        for (int i = 0; i < iterNum; i++) {
+            int32_t p = i % ConcurrentBridge::rowCount;
             int ret = resultSet->GoToRow(p);
             if (ret != E_OK) {
                 errorCount.fetch_add(1);
@@ -453,8 +456,8 @@ HWTEST_F(DatashareResultSetTest, GoToRowGetIntConcurrent001, TestSize.Level1)
     };
 
     std::vector<std::thread> threads;
-    threads.reserve(THREAD_NUM);
-    for (int t = 0; t < THREAD_NUM; t++) {
+    threads.reserve(threadNum);
+    for (int t = 0; t < threadNum; t++) {
         threads.emplace_back(worker);
     }
     for (auto &th : threads) {
