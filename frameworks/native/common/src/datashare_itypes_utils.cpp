@@ -212,6 +212,17 @@ bool Unmarshalling(AshmemNode &node, MessageParcel &parcel)
 {
     node.isManaged = true;
     node.ashmem = parcel.ReadAshmem();
+    if (node.ashmem == nullptr) {
+        LOG_ERROR("Ashmem is nullptr.");
+        return false;
+    }
+    int32_t size = node.ashmem->GetAshmemSize();
+    if (size <= 0 || size > DATA_SIZE_PUBLISHED_ASHMEM_LIMIT) {
+        LOG_ERROR("Ashmem size is invalid: %{public}d", size);
+        node.ashmem->CloseAshmem();
+        node.ashmem = nullptr;
+        return false;
+    }
     return true;
 }
 

@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "datashare_template"
+
+#include "datashare_log.h"
 #include "datashare_template.h"
 
 namespace OHOS {
@@ -103,12 +106,20 @@ PublishedDataItem::DataType PublishedDataItem::GetData() const
     if (IsAshmem()) {
         const AshmemNode &node = std::get<AshmemNode>(value_);
         if (node.ashmem != nullptr) {
-            node.ashmem->MapReadOnlyAshmem();
-            uint8_t *data = (uint8_t *)node.ashmem->ReadFromAshmem(node.ashmem->GetAshmemSize(), 0);
+            int32_t size = node.ashmem->GetAshmemSize();
+            if (size <= 0 || size > DATA_SIZE_PUBLISHED_ASHMEM_LIMIT) {
+                LOG_ERROR("Ashmem size is invalid: %{public}d", size);
+                return std::vector<uint8_t>();
+            }
+            if (!node.ashmem->MapReadOnlyAshmem()) {
+                LOG_ERROR("Failed to map read only ashmem.");
+                return std::vector<uint8_t>();
+            }
+            uint8_t *data = (uint8_t *)node.ashmem->ReadFromAshmem(size, 0);
             if (data == nullptr) {
                 return std::vector<uint8_t>();
             }
-            return std::vector<uint8_t>(data, data + node.ashmem->GetAshmemSize());
+            return std::vector<uint8_t>(data, data + size);
         }
         return std::vector<uint8_t>();
     } else {

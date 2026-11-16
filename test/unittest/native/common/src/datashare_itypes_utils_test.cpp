@@ -1783,5 +1783,177 @@ HWTEST_F(DatashareItypesUtilsTest, UnmarshalDataProxyChangeInfoVec_003, TestSize
 
     LOG_INFO("UnmarshalDataProxyChangeInfoVec_003 ends");
 }
+
+/**
+* @tc.name: Marshal_AshmemNode_001
+* @tc.desc: Test the marshalling and unmarshalling of AshmemNode whose ashmem size is exactly the upper limit
+*           DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, ensuring the boundary size is accepted and data is consistent.
+* @tc.type: FUNC
+* @tc.require: issueNumber
+* @tc.precon:
+*    1. Ashmem::CreateAshmem can create a shared memory object with size DATA_SIZE_PUBLISHED_ASHMEM_LIMIT.
+*    2. The Ashmem class's MapReadAndWriteAshmem, WriteToAshmem, UnmapAshmem, ReadFromAshmem and CloseAshmem
+*       methods work normally.
+* @tc.step:
+*    1. Create an ashmem with size DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, map it, write an int32_t value, then unmap it.
+*    2. Marshal an AshmemNode wrapping the ashmem into a MessageParcel and unmarshal it into another AshmemNode.
+*    3. Verify the unmarshalled ashmem is valid, its size equals DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, and the data
+*       read from it is identical to the written value.
+*    4. Call CloseAshmem on both the original and the unmarshalled ashmem to release resources.
+* @tc.expect:
+*    1. The marshalling and unmarshalling operations succeed.
+*    2. The unmarshalled ashmem is not nullptr, its size equals DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, and the data
+*       read from it equals the written value.
+*/
+HWTEST_F(DatashareItypesUtilsTest, Marshal_AshmemNode_001, TestSize.Level0)
+{
+    LOG_INFO("Marshal_AshmemNode_001 starts");
+    MessageParcel parcel;
+    sptr<Ashmem> ashmem = Ashmem::CreateAshmem("test_ashmem", DATA_SIZE_PUBLISHED_ASHMEM_LIMIT);
+    ASSERT_NE(ashmem, nullptr);
+    ASSERT_TRUE(ashmem->MapReadAndWriteAshmem());
+    int32_t data = 123;
+    ASSERT_TRUE(ashmem->WriteToAshmem(&data, sizeof(data), 0));
+    ashmem->UnmapAshmem();
+    AshmemNode node = { ashmem, true };
+    ASSERT_TRUE(ITypesUtil::Marshalling(node, parcel));
+    AshmemNode unmarshalNode;
+    EXPECT_TRUE(ITypesUtil::Unmarshalling(unmarshalNode, parcel));
+    ASSERT_NE(unmarshalNode.ashmem, nullptr);
+    EXPECT_EQ(unmarshalNode.ashmem->GetAshmemSize(), DATA_SIZE_PUBLISHED_ASHMEM_LIMIT);
+    ASSERT_TRUE(unmarshalNode.ashmem->MapReadOnlyAshmem());
+    auto ashmemData = unmarshalNode.ashmem->ReadFromAshmem(sizeof(data), 0);
+    ASSERT_NE(ashmemData, nullptr);
+    EXPECT_EQ(*(reinterpret_cast<const int32_t *>(ashmemData)), data);
+    ashmem->CloseAshmem();
+    unmarshalNode.ashmem->CloseAshmem();
+    LOG_INFO("Marshal_AshmemNode_001 ends");
+}
+
+/**
+* @tc.name: Unmarshal_AshmemNode_001
+* @tc.desc: Test that Unmarshalling(AshmemNode) rejects an ashmem whose size exceeds
+*           DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, to prevent unbounded memory allocation from a remote parcel.
+* @tc.type: FUNC
+* @tc.require: issueNumber
+* @tc.precon:
+*    1. Ashmem::CreateAshmem can create a shared memory object with size greater than
+*       DATA_SIZE_PUBLISHED_ASHMEM_LIMIT.
+*    2. The test environment supports ITypesUtil's Marshalling/Unmarshalling for AshmemNode and MessageParcel.
+* @tc.step:
+*    1. Create an ashmem whose size is DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1.
+*    2. Marshal an AshmemNode wrapping the ashmem into a MessageParcel.
+*    3. Unmarshal the parcel into another AshmemNode and check the result.
+*    4. Verify the unmarshalled node does not hold any ashmem and close the original ashmem.
+* @tc.expect:
+*    1. The marshalling operation succeeds (the write side only writes the fd and size).
+*    2. The unmarshalling operation fails and the unmarshalled node's ashmem is nullptr.
+*/
+HWTEST_F(DatashareItypesUtilsTest, Unmarshal_AshmemNode_001, TestSize.Level0)
+{
+    LOG_INFO("Unmarshal_AshmemNode_001 starts");
+    MessageParcel parcel;
+    sptr<Ashmem> ashmem = Ashmem::CreateAshmem("oversize_ashmem", DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1);
+    ASSERT_NE(ashmem, nullptr);
+    AshmemNode node = { ashmem, true };
+    ASSERT_TRUE(ITypesUtil::Marshalling(node, parcel));
+    AshmemNode unmarshalNode;
+    EXPECT_FALSE(ITypesUtil::Unmarshalling(unmarshalNode, parcel));
+    EXPECT_EQ(unmarshalNode.ashmem, nullptr);
+    ashmem->CloseAshmem();
+    LOG_INFO("Unmarshal_AshmemNode_001 ends");
+}
+
+/**
+* @tc.name: Unmarshal_PublishedDataItem_001
+* @tc.desc: Test that unmarshalling a PublishedDataItem whose ashmem value exceeds
+*           DATA_SIZE_PUBLISHED_ASHMEM_LIMIT fails, so an oversized publish transaction is rejected as a whole.
+* @tc.type: FUNC
+* @tc.require: issueNumber
+* @tc.precon:
+*    1. PublishedDataItem can be constructed from a std::vector<uint8_t> larger than
+*       DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, which internally creates and fills an ashmem.
+*    2. The test environment supports ITypesUtil's Marshalling/Unmarshalling for PublishedDataItem.
+* @tc.step:
+*    1. Construct a PublishedDataItem with a vector of DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1 bytes.
+*    2. Marshal the item into a MessageParcel.
+*    3. Unmarshal the parcel into another PublishedDataItem and check the result.
+* @tc.expect:
+*    1. The marshalling operation succeeds.
+*    2. The unmarshalling operation fails because the ashmem size exceeds the limit.
+*/
+HWTEST_F(DatashareItypesUtilsTest, Unmarshal_PublishedDataItem_001, TestSize.Level0)
+{
+    LOG_INFO("Unmarshal_PublishedDataItem_001 starts");
+    MessageParcel parcel;
+    std::vector<uint8_t> oversizeValue(DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1, 'A');
+    PublishedDataItem item("datashareproxy://com.acts.ohos.data.datasharetest/test", 0, oversizeValue);
+    ASSERT_TRUE(ITypesUtil::Marshalling(item, parcel));
+    PublishedDataItem unmarshalItem;
+    EXPECT_FALSE(ITypesUtil::Unmarshalling(unmarshalItem, parcel));
+    LOG_INFO("Unmarshal_PublishedDataItem_001 ends");
+}
+
+/**
+* @tc.name: GetData_Ashmem_001
+* @tc.desc: Test that PublishedDataItem::GetData returns an empty vector without crash when the ashmem size
+*           exceeds DATA_SIZE_PUBLISHED_ASHMEM_LIMIT, to prevent unbounded heap copy as a defense in depth.
+* @tc.type: FUNC
+* @tc.require: issueNumber
+* @tc.precon:
+*    1. Ashmem::CreateAshmem can create a shared memory object with size greater than
+*       DATA_SIZE_PUBLISHED_ASHMEM_LIMIT.
+*    2. PublishedDataItem::SetAshmem can wrap the ashmem as the published value.
+* @tc.step:
+*    1. Create an ashmem whose size is DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1.
+*    2. Set the ashmem into a PublishedDataItem and call GetData.
+*    3. Check the returned variant holds an empty vector.
+* @tc.expect:
+*    1. GetData returns an empty std::vector<uint8_t> and the call does not crash.
+*/
+HWTEST_F(DatashareItypesUtilsTest, GetData_Ashmem_001, TestSize.Level0)
+{
+    LOG_INFO("GetData_Ashmem_001 starts");
+    sptr<Ashmem> ashmem = Ashmem::CreateAshmem("oversize_getdata", DATA_SIZE_PUBLISHED_ASHMEM_LIMIT + 1);
+    ASSERT_NE(ashmem, nullptr);
+    PublishedDataItem item;
+    item.SetAshmem(ashmem, true);
+    auto value = item.GetData();
+    ASSERT_TRUE(std::holds_alternative<std::vector<uint8_t>>(value));
+    EXPECT_TRUE(std::get<std::vector<uint8_t>>(value).empty());
+    LOG_INFO("GetData_Ashmem_001 ends");
+}
+
+/**
+* @tc.name: GetData_Ashmem_002
+* @tc.desc: Test that PublishedDataItem::GetData returns the data written into a normal-sized ashmem.
+* @tc.type: FUNC
+* @tc.require: issueNumber
+* @tc.precon:
+*    1. Ashmem::CreateAshmem can create a shared memory object with a small size.
+*    2. The Ashmem class's MapReadAndWriteAshmem, WriteToAshmem and UnmapAshmem methods work normally.
+* @tc.step:
+*    1. Create an ashmem, map it, write a byte sequence into it, then unmap it.
+*    2. Set the ashmem into a PublishedDataItem and call GetData.
+*    3. Check the returned variant holds a vector equal to the written byte sequence.
+* @tc.expect:
+*    1. GetData returns a std::vector<uint8_t> whose content and size equal the written data.
+*/
+HWTEST_F(DatashareItypesUtilsTest, GetData_Ashmem_002, TestSize.Level0)
+{
+    LOG_INFO("GetData_Ashmem_002 starts");
+    sptr<Ashmem> ashmem = Ashmem::CreateAshmem("normal_getdata", 8);
+    ASSERT_NE(ashmem, nullptr);
+    ASSERT_TRUE(ashmem->MapReadAndWriteAshmem());
+    std::vector<uint8_t> data = { 1, 2, 3, 4, 5, 6, 7, 8 };
+    ASSERT_TRUE(ashmem->WriteToAshmem(data.data(), data.size(), 0));
+    ashmem->UnmapAshmem();
+    PublishedDataItem item;
+    item.SetAshmem(ashmem, true);
+    auto value = item.GetData();
+    ASSERT_TRUE(std::holds_alternative<std::vector<uint8_t>>(value));
+    EXPECT_EQ(std::get<std::vector<uint8_t>>(value), data);
+    LOG_INFO("GetData_Ashmem_002 ends");
+}
 }
 }
