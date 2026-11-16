@@ -18,16 +18,17 @@
 #include "datashare_result_set.h"
 
 #include <securec.h>
+
 #include <sstream>
 
 #include "adaptor.h"
 #include "datashare_block_writer_impl.h"
 #include "datashare_errno.h"
 #include "datashare_log.h"
+#include "ishared_result_set.h"
 #include "parcel.h"
 #include "shared_block.h"
 #include "string_ex.h"
-#include "ishared_result_set.h"
 
 namespace OHOS {
 namespace DataShare {
@@ -40,8 +41,7 @@ DataShareResultSet::DataShareResultSet()
 {
 }
 
-DataShareResultSet::DataShareResultSet(std::shared_ptr<ResultSetBridge> &bridge, size_t blockSize)
-    : bridge_(bridge)
+DataShareResultSet::DataShareResultSet(std::shared_ptr<ResultSetBridge> &bridge, size_t blockSize) : bridge_(bridge)
 {
     std::string name = "DataShare" + std::to_string(blockId_.fetch_add(1));
     if (blockSize > MAX_SHARE_BLOCK_SIZE) {
@@ -138,6 +138,7 @@ std::shared_ptr<DataShareBlockWriterImpl> DataShareResultSet::GetBlockWriter()
 
 int DataShareResultSet::GetDataType(int columnIndex, DataType &dataType)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -156,6 +157,7 @@ int DataShareResultSet::GetDataType(int columnIndex, DataType &dataType)
 
 int DataShareResultSet::GoToRow(int position)
 {
+    std::unique_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -200,6 +202,7 @@ int DataShareResultSet::GoToRow(int position)
 
 int DataShareResultSet::GetBlob(int columnIndex, std::vector<uint8_t> &value)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -243,6 +246,7 @@ int DataShareResultSet::GetBlob(int columnIndex, std::vector<uint8_t> &value)
 
 int DataShareResultSet::GetString(int columnIndex, std::string &value)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -285,6 +289,7 @@ int DataShareResultSet::GetString(int columnIndex, std::string &value)
 
 int DataShareResultSet::GetInt(int columnIndex, int &value)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -300,6 +305,7 @@ int DataShareResultSet::GetInt(int columnIndex, int &value)
 
 int DataShareResultSet::GetLong(int columnIndex, int64_t &value)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -337,6 +343,7 @@ int DataShareResultSet::GetLong(int columnIndex, int64_t &value)
 
 int DataShareResultSet::GetDouble(int columnIndex, double &value)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -378,6 +385,7 @@ int DataShareResultSet::GetDouble(int columnIndex, double &value)
 
 int DataShareResultSet::IsColumnNull(int columnIndex, bool &isNull)
 {
+    std::shared_lock<std::shared_mutex> lock(cursorMutex_);
     auto block = GetBlock();
     if (block == nullptr) {
         LOG_ERROR("sharedBlock is null!");
@@ -503,5 +511,5 @@ std::shared_ptr<DataShareResultSet> DataShareResultSet::Unmarshal(MessageParcel 
 {
     return DataShare::ISharedResultSet::ReadFromParcel(parcel);
 }
-}  // namespace DataShare
-}  // namespace OHOS
+} // namespace DataShare
+} // namespace OHOS

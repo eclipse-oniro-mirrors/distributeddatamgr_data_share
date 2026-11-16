@@ -187,6 +187,8 @@ private:
     int startRowPos_ = -1;
     // The actual position of the last row of data in the shareblock
     int endRowPos_ = -1;
+    // Protects startRowPos_/endRowPos_ and consistency with rowPos_.
+    mutable std::shared_mutex cursorMutex_;
     // The SharedBlock owned by this DataShareResultSet
     std::shared_mutex mutex_;
     std::shared_ptr<AppDataFwk::SharedBlock> sharedBlock_ = nullptr;

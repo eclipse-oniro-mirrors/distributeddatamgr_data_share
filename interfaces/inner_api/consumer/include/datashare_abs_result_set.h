@@ -20,6 +20,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+
 #include "basic/result_set.h"
 
 namespace OHOS {
@@ -45,7 +46,7 @@ public:
     int GoToNextRow() override;
     int GoToPreviousRow() override;
     int IsAtFirstRow(bool &result) const override;
-    
+
     /**
      * @brief Checks whether the result set is positioned at the last row.
      * If data in the database is deleted concurrently after the resultset is obtained,
@@ -70,7 +71,7 @@ protected:
     // The default position of the result set
     static const int INIT_POS = -1;
     // Current row position
-    int rowPos_;
+    std::atomic<int> rowPos_;
     int count_;
     // Indicates whether the result set is closed
     std::atomic<bool> isClosed_;
