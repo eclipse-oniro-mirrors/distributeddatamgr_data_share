@@ -33,6 +33,11 @@ constexpr int32_t DATA_SIZE_IPC_TRANSFER_LIMIT = 200 << 10;
  */
 constexpr int32_t DATA_SIZE_ASHMEM_TRANSFER_LIMIT = (10 << 10) << 10;
 /**
+ *  Specifies the upper limit of size of data that PublishedDataItem will transfer by the shared memory.
+ *  Currently it's 200k.
+ */
+constexpr int32_t DATA_SIZE_PUBLISHED_ASHMEM_LIMIT = 200 << 10;
+/**
  *  Specifies the name of the shared memory that RdbChangeNode will transfer.
  */
 constexpr const char* ASHMEM_NAME = "DataShareRdbChangeNode";
