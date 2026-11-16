@@ -187,14 +187,10 @@ private:
     int startRowPos_ = -1;
     // The actual position of the last row of data in the shareblock
     int endRowPos_ = -1;
-    // Protects startRowPos_/endRowPos_ and the consistency of rowPos_ with them: GoToRow takes the
-    // exclusive lock to make the check-then-OnGo-then-write transaction atomic; Get* take the shared
-    // lock so they always observe a consistent (rowPos_, startRowPos_) pair matching the current
-    // SharedBlock content (and never read the SharedBlock while a concurrent GoToRow's OnGo is
-    // clearing it). rowPos_ itself is std::atomic<int> (see DataShareAbsResultSet) so base-class
-    // read-only methods (GoToNextRow/IsEnded/...) and CheckState that do not take cursorMutex_ are
-    // still race-free. cursorMutex_ is independent from mutex_ (which only guards the shared_ptr
-    // fields below), so there is no re-entrant shared_mutex lock and no deadlock.
+    // Protects startRowPos_/endRowPos_ and consistency with rowPos_. GoToRow takes the exclusive
+    // lock (atomic check-OnGo-write); Get* take the shared lock for consistent reads. rowPos_ is
+    // atomic, so base-class read-only methods are race-free without cursorMutex_. Independent from
+    // mutex_ below; lock order is always cursorMutex_ -> mutex_, so no deadlock.
     mutable std::shared_mutex cursorMutex_;
     // The SharedBlock owned by this DataShareResultSet
     std::shared_mutex mutex_;
