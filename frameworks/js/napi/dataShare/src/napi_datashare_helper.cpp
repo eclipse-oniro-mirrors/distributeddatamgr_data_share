@@ -846,7 +846,9 @@ napi_value NapiDataShareHelper::Napi_CleanInvalidData(napi_env env, napi_callbac
         }
     };
     context->SetAction(std::move(input), std::move(output));
-    AsyncCall asyncCall(env, info, context);
+    // Pass true to throw BusinessError from the input-validation path, keeping the code
+    // type (int32) and the message consistent with the exec path (SetBusinessError).
+    AsyncCall asyncCall(env, info, context, true);
     return asyncCall.Call(env, exec);
 }
 
