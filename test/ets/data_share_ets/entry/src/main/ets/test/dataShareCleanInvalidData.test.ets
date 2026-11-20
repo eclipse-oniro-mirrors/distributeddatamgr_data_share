@@ -15,7 +15,6 @@
 
 import { describe, beforeAll, beforeEach, afterEach, afterAll, it, expect, Level, Size, TestType } from "@ohos/hypium";
 import common from '@ohos.app.ability.common';
-import { AppStorage } from '@ohos.arkui.stateManagement';
 import { BusinessError } from "@ohos.base";
 import dataShare from '@ohos.data.dataShare';
 
@@ -51,7 +50,7 @@ export default function DataShareCleanInvalidDataTest() {
     it('cleanInvalidDataTest001', TestType.FUNCTION | Size.MEDIUMTEST | Level.LEVEL1, async (done: Function) => {
       console.info(TAG + "************* cleanInvalidDataTest001 start *************");
       try {
-        let helper = await dataShare.createDataShareHelper(context, cardUri);
+        let helper = await dataShare.createDataShareHelper(context, cardUri, { isProxy: true });
         let template: dataShare.Template = {
           predicates: {
             "p1": "select name0 as name from TBL00",
@@ -93,7 +92,7 @@ export default function DataShareCleanInvalidDataTest() {
     it('cleanInvalidDataTest002', TestType.FUNCTION | Size.MEDIUMTEST | Level.LEVEL1, async (done: Function) => {
       console.info(TAG + "************* cleanInvalidDataTest002 start *************");
       try {
-        let helper = await dataShare.createDataShareHelper(context, cardUri);
+        let helper = await dataShare.createDataShareHelper(context, cardUri, { isProxy: true });
         let template: dataShare.Template = {
           predicates: {
             "p1": "select name0 as name from TBL00",
@@ -135,7 +134,7 @@ export default function DataShareCleanInvalidDataTest() {
     it('cleanInvalidDataTest003', TestType.FUNCTION | Size.MEDIUMTEST | Level.LEVEL1, async (done: Function) => {
       console.info(TAG + "************* cleanInvalidDataTest003 start *************");
       try {
-        let helper = await dataShare.createDataShareHelper(context, cardUri);
+        let helper = await dataShare.createDataShareHelper(context, cardUri, { isProxy: true });
         await helper.close();
         helper.cleanInvalidData(["1"]).then(() => {
           console.error(TAG + "cleanInvalidDataTest003 clean should not success");
@@ -167,31 +166,31 @@ export default function DataShareCleanInvalidDataTest() {
     it('cleanInvalidDataTest004', TestType.FUNCTION | Size.MEDIUMTEST | Level.LEVEL1, async (done: Function) => {
       console.info(TAG + "************* cleanInvalidDataTest004 start *************");
       try {
-        let helper = await dataShare.createDataShareHelper(context, cardUri);
+        let helper = await dataShare.createDataShareHelper(context, cardUri, { isProxy: true });
         let emptyFormIds: Array<string> = [];
-        helper.cleanInvalidData(emptyFormIds).then(() => {
+        try {
+          helper.cleanInvalidData(emptyFormIds);
           console.error(TAG + "cleanInvalidDataTest004 empty array should not success");
           expect(true).assertFail();
-          done();
-        }).catch((error) => {
-          let err = error as BusinessError;
-          console.info(TAG + `cleanInvalidDataTest004 empty error: code: ${err.code}, message: ${err.message} `);
-          expect(err.code == 15700016).assertTrue();
-          let overSizeFormIds: Array<string> = [];
-          for (let i = 0; i < 51; i++) {
-            overSizeFormIds.push(`${i}`);
-          }
-          helper.cleanInvalidData(overSizeFormIds).then(() => {
-            console.error(TAG + "cleanInvalidDataTest004 over size should not success");
-            expect(true).assertFail();
-            done();
-          }).catch((error2) => {
-            let err2 = error2 as BusinessError;
-            console.info(TAG + `cleanInvalidDataTest004 over size error: code: ${err2.code}, message: ${err2.message} `);
-            expect(err2.code == 15700016).assertTrue();
-            done();
-          });
-        });
+        } catch (err) {
+          let e = err as BusinessError;
+          console.info(TAG + `cleanInvalidDataTest004 empty error: code: ${e.code}, message: ${e.message} `);
+          expect(e.code == 15700016).assertTrue();
+        }
+        let overSizeFormIds: Array<string> = [];
+        for (let i = 0; i < 51; i++) {
+          overSizeFormIds.push(`${i}`);
+        }
+        try {
+          helper.cleanInvalidData(overSizeFormIds);
+          console.error(TAG + "cleanInvalidDataTest004 over size should not success");
+          expect(true).assertFail();
+        } catch (err) {
+          let e = err as BusinessError;
+          console.info(TAG + `cleanInvalidDataTest004 over size error: code: ${e.code}, message: ${e.message} `);
+          expect(e.code == 15700016).assertTrue();
+        }
+        done();
       } catch (err) {
         let e = err as BusinessError;
         console.error(TAG + `cleanInvalidDataTest004 catch error: code: ${e.code}, message: ${e.message} `);
