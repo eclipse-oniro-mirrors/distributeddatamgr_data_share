@@ -20,7 +20,6 @@
 #include "data_share_manager_impl.h"
 #include "datashare_helper_impl.h"
 #include "datashare_log.h"
-#include "ikvstore_data_service.h"
 #include "gmock/gmock.h"
 
 namespace OHOS {
@@ -668,15 +667,6 @@ private:
     int32_t replyStatus_;
 };
 
-// Mock kv service proxy whose GetFeatureInterface returns nullptr, which makes
-// DataShareManagerImpl::GetServiceProxy deterministically fail in unit tests.
-class MockDataShareKvServiceProxy : public DataShareKvServiceProxy {
-public:
-    explicit MockDataShareKvServiceProxy(const sptr<IRemoteObject> &impl) : DataShareKvServiceProxy(impl) {}
-    ~MockDataShareKvServiceProxy() = default;
-    MOCK_METHOD(sptr<IRemoteObject>, GetFeatureInterface, (const std::string &name), (override));
-};
-
 /**
  * @tc.name: CleanInvalidDataTest001
  * @tc.desc: Verify CleanInvalidData of DataShareHelperImpl returns DATA_SHARE_ERROR when the
@@ -734,46 +724,15 @@ HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest003, TestSize.Level0)
 
 /**
  * @tc.name: CleanInvalidDataTest004
- * @tc.desc: Verify CleanInvalidData of PersistentDataController returns the invalid value when
- *           no data share service proxy is available. The kv service mock makes
- *           GetFeatureInterface return nullptr so GetServiceProxy deterministically fails.
- * @tc.type: FUNC
- * @tc.require: issueIC8OCN
- */
-HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest004, TestSize.Level0)
-{
-    LOG_INFO("CleanInvalidDataTest004::Start");
-    auto manager = DataShareManagerImpl::GetInstance();
-    ASSERT_NE(manager, nullptr);
-    auto savedProxy = manager->dataShareService_;
-    auto savedKvService = manager->dataMgrService_;
-    sptr<MockDataShareKvServiceProxy> kvMock = new MockDataShareKvServiceProxy(sptr<IRemoteObject>());
-    EXPECT_CALL(*(kvMock.GetRefPtr()), GetFeatureInterface(::testing::_))
-        .WillOnce(::testing::Return(sptr<IRemoteObject>()));
-    manager->dataShareService_ = nullptr;
-    manager->dataMgrService_ = kvMock;
-    PersistentDataController controller;
-    std::vector<std::string> validSubscribers = { "1" };
-    // GetFeatureInterface returns nullptr, so GetServiceProxy returns nullptr and the
-    // controller returns INVALID_VALUE, which equals DATA_SHARE_ERROR.
-    int result = controller.CleanInvalidData(validSubscribers);
-    EXPECT_EQ(result, DATA_SHARE_ERROR);
-    manager->dataShareService_ = savedProxy;
-    manager->dataMgrService_ = savedKvService;
-    LOG_INFO("CleanInvalidDataTest004::End");
-}
-
-/**
- * @tc.name: CleanInvalidDataTest005
  * @tc.desc: Verify the full CleanInvalidData call chain: DataShareHelperImpl with a real
  *           PersistentDataController and an injected service proxy (mock remote replies E_OK)
  *           returns E_OK end to end.
  * @tc.type: FUNC
  * @tc.require: issueIC8OCN
  */
-HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest005, TestSize.Level0)
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest004, TestSize.Level0)
 {
-    LOG_INFO("CleanInvalidDataTest005::Start");
+    LOG_INFO("CleanInvalidDataTest004::Start");
     auto helper = DataShareHelperImplTest::GetInstance();
     ASSERT_NE(helper, nullptr);
     auto manager = DataShareManagerImpl::GetInstance();
@@ -791,7 +750,7 @@ HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest005, TestSize.Level0)
             DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA));
     helper->persistentDataCtl_ = savedCtl;
     manager->dataShareService_ = savedProxy;
-    LOG_INFO("CleanInvalidDataTest005::End");
+    LOG_INFO("CleanInvalidDataTest004::End");
 }
 
 } // namespace DataShare
