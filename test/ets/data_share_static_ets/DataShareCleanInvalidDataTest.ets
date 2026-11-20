@@ -30,7 +30,7 @@ export default function dataShareCleanInvalidDataTest() {
     beforeAll(async () => {
       context = AppStorage.get<common.UIAbilityContext>("context") as common.UIAbilityContext;
       try {
-        datashareHelper = await dataShare.createDataShareHelper(context, dseUri);
+        datashareHelper = await dataShare.createDataShareHelper(context, dseUri, { isProxy: true });
         dsHelper = datashareHelper as dataShare.DataShareHelper;
       } catch(err) {
         let code = (err as BusinessError).code;
@@ -42,7 +42,7 @@ export default function dataShareCleanInvalidDataTest() {
 
     afterAll(async () => {
       try {
-        dsHelper = await dataShare.createDataShareHelper(context, dseUri) as dataShare.DataShareHelper;
+        dsHelper = await dataShare.createDataShareHelper(context, dseUri, { isProxy: true }) as dataShare.DataShareHelper;
         await dsHelper.close();
       } catch (err) {
         let code = (err as BusinessError).code;
@@ -198,29 +198,29 @@ export default function dataShareCleanInvalidDataTest() {
       if (datashareHelper != undefined) {
         try {
           let emptyFormIds: Array<string> = [];
-          dsHelper.cleanInvalidData(emptyFormIds).then(() => {
+          try {
+            dsHelper.cleanInvalidData(emptyFormIds);
             console.error(`empty array should not success`);
             expect(true).assertFail();
-            done();
-          }).catch((error) => {
-            let err = error as BusinessError;
-            console.error(`empty error: code: ${err.code}, message: ${err.message} `);
-            expect(err.code == 15700016).assertTrue();
-            let overSizeFormIds: Array<string> = [];
-            for (let i = 0; i < 51; i++) {
-              overSizeFormIds.push(`${i}`);
-            }
-            dsHelper.cleanInvalidData(overSizeFormIds).then(() => {
-              console.error(`over size should not success`);
-              expect(true).assertFail();
-              done();
-            }).catch((error2) => {
-              let err2 = error2 as BusinessError;
-              console.error(`over size error: code: ${err2.code}, message: ${err2.message} `);
-              expect(err2.code == 15700016).assertTrue();
-              done();
-            });
-          });
+          } catch (err) {
+            let e = err as BusinessError;
+            console.error(`empty error: code: ${e.code}, message: ${e.message} `);
+            expect(e.code == 15700016).assertTrue();
+          }
+          let overSizeFormIds: Array<string> = [];
+          for (let i = 0; i < 51; i++) {
+            overSizeFormIds.push(`${i}`);
+          }
+          try {
+            dsHelper.cleanInvalidData(overSizeFormIds);
+            console.error(`over size should not success`);
+            expect(true).assertFail();
+          } catch (err) {
+            let e = err as BusinessError;
+            console.error(`over size error: code: ${e.code}, message: ${e.message} `);
+            expect(e.code == 15700016).assertTrue();
+          }
+          done();
         } catch (err) {
           let code = (err as BusinessError).code;
           let message = (err as BusinessError).message;
