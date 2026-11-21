@@ -16,7 +16,10 @@
 #define LOG_TAG "datashare_helper_impl_test"
 
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
 #include <memory>
+#include <thread>
 #include "data_share_manager_impl.h"
 #include "datashare_helper_impl.h"
 #include "datashare_log.h"
@@ -67,6 +70,30 @@ public:
 
 void DataShareHelperImplTest::SetUpTestCase(void)
 {
+    // The first DataShareManagerImpl::GetInstance() subscribes to the distributed data service SA status, and
+    // samgr delivers the initial OnAddSystemAbility callback asynchronously on a binder thread. That callback
+    // resets and rebuilds dataShareService_, which races with test cases that inject a service proxy into the
+    // singleton (CleanInvalidDataTest004). Trigger the subscription here, wait for the callback to arrive, and
+    // drain its proxy rebuild so dataShareService_ is stable before any test case runs.
+    auto manager = DataShareManagerImpl::GetInstance();
+    EXPECT_NE(manager, nullptr);
+    std::atomic<bool> saStatusNotified = false;
+    if (manager != nullptr) {
+        auto observerKey = reinterpret_cast<GeneralControllerServiceImpl *>(&saStatusNotified);
+        manager->SetRegisterCallback(observerKey, [&saStatusNotified]() { saStatusNotified = true; });
+        constexpr int32_t waitSliceMs = 10;
+        constexpr int32_t maxWaitMs = 1000;
+        for (int32_t waitedMs = 0; waitedMs < maxWaitMs && !saStatusNotified.load(); waitedMs += waitSliceMs) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(waitSliceMs));
+        }
+        manager->RemoveRegisterCallback(observerKey);
+        LOG_INFO("SetUpTestCase SA status callback notified: %{public}d", saStatusNotified.load() ? 1 : 0);
+        if (saStatusNotified.load()) {
+            // OnAddSystemAbility rebuilds the service proxy after notifying observers; serialize with its
+            // remaining work by going through GetServiceProxy once more.
+            DataShareManagerImpl::GetServiceProxy();
+        }
+    }
     DataShareHelperImplTest::GetInstance(std::make_shared<DataShareHelperImpl>("datashare://datasharehelperimpl"));
     EXPECT_NE(DataShareHelperImplTest::GetInstance(), nullptr);
     DataShareHelperImplTest::GetController(std::make_shared<MockGeneralController>());
