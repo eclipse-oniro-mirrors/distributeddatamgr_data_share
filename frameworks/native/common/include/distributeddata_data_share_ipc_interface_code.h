@@ -113,6 +113,12 @@ enum class DataShareServiceInterfaceCode {
     DATA_SHARE_SERVICE_CMD_PROXY_PUT_VALUE,
     DATA_SHARE_SERVICE_CMD_PROXY_REMOVE_VALUE,
     DATA_SHARE_SERVICE_CMD_PROXY_GET_VALUES,
+    // System-only command for the system API cleanInvalidData. It is defined in
+    // the base code range without a DATA_SHARE_CMD_SYSTEM_CODE offset variant:
+    // unlike legacy commands, it has no inner-layer callers to keep compatible,
+    // so the service side enforces the system app check for every code in
+    // [DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA, DATA_SHARE_CMD_SYSTEM_CODE).
+    DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA,
     DATA_SHARE_SERVICE_CMD_MAX,
     DATA_SHARE_SERVICE_CMD_QUERY_SYSTEM = DATA_SHARE_CMD_SYSTEM_CODE,
     DATA_SHARE_SERVICE_CMD_ADD_TEMPLATE_SYSTEM,

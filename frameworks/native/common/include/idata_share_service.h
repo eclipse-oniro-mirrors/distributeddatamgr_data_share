@@ -52,6 +52,8 @@ public:
 
     virtual int DelQueryTemplate(const std::string &uri, int64_t subscriberId) = 0;
 
+    virtual int CleanInvalidData(const std::vector<std::string> &validSubscribers) = 0;
+
     virtual std::vector<OperationResult> Publish(const Data &data, const std::string &bundleName) = 0;
 
     virtual Data GetPublishedData(const std::string &bundleName, int &resultCode) = 0;

@@ -66,6 +66,8 @@ const int EXCEPTION_DATA_AREA_NOT_EXIST = 15700012;
 const int EXCEPTION_HELPER_CLOSED = 15700013;
 const int EXCEPTION_PROXY_PARAMETER_CHECK = 15700014;
 const int EXCEPTION_NO_PERMISSION_ACCESS_URI = 15700015;
+const int EXCEPTION_SUBSCRIBERS_SIZE_INVALID = 15700016;
+const int MAX_VALID_SUBSCRIBERS = 50;
 const int INVALID_MAX_VALUE_LENGTH = -1;
 class SharedPtrHolder {
 public:
@@ -183,6 +185,8 @@ int DataShareNativeAddTemplate(int64_t dataShareHelperPtr, rust::String uri,
     rust::String subscriberId, const Template& temp);
 
 int DataShareNativeDelTemplate(int64_t dataShareHelperPtr, rust::String uri, rust::String subscriberId);
+
+int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validSubscribers);
 
 I32ResultWrap DataShareNativeInsert(int64_t dataShareHelperPtr, rust::String strUri,
     rust::Vec<ValuesBucketKvItem> bucket);

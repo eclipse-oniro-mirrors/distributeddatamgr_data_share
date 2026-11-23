@@ -16,7 +16,11 @@
 #define LOG_TAG "datashare_helper_impl_test"
 
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
 #include <memory>
+#include <thread>
+#include "data_share_manager_impl.h"
 #include "datashare_helper_impl.h"
 #include "datashare_log.h"
 #include "gmock/gmock.h"
@@ -66,6 +70,30 @@ public:
 
 void DataShareHelperImplTest::SetUpTestCase(void)
 {
+    // The first DataShareManagerImpl::GetInstance() subscribes to the distributed data service SA status, and
+    // samgr delivers the initial OnAddSystemAbility callback asynchronously on a binder thread. That callback
+    // resets and rebuilds dataShareService_, which races with test cases that inject a service proxy into the
+    // singleton (CleanInvalidDataTest004). Trigger the subscription here, wait for the callback to arrive, and
+    // drain its proxy rebuild so dataShareService_ is stable before any test case runs.
+    auto manager = DataShareManagerImpl::GetInstance();
+    EXPECT_NE(manager, nullptr);
+    std::atomic<bool> saStatusNotified = false;
+    if (manager != nullptr) {
+        auto observerKey = reinterpret_cast<GeneralControllerServiceImpl *>(&saStatusNotified);
+        manager->SetRegisterCallback(observerKey, [&saStatusNotified]() { saStatusNotified = true; });
+        constexpr int32_t waitSliceMs = 10;
+        constexpr int32_t maxWaitMs = 1000;
+        for (int32_t waitedMs = 0; waitedMs < maxWaitMs && !saStatusNotified.load(); waitedMs += waitSliceMs) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(waitSliceMs));
+        }
+        manager->RemoveRegisterCallback(observerKey);
+        LOG_INFO("SetUpTestCase SA status callback notified: %{public}d", saStatusNotified.load() ? 1 : 0);
+        if (saStatusNotified.load()) {
+            // OnAddSystemAbility rebuilds the service proxy after notifying observers; serialize with its
+            // remaining work by going through GetServiceProxy once more.
+            DataShareManagerImpl::GetServiceProxy();
+        }
+    }
     DataShareHelperImplTest::GetInstance(std::make_shared<DataShareHelperImpl>("datashare://datasharehelperimpl"));
     EXPECT_NE(DataShareHelperImplTest::GetInstance(), nullptr);
     DataShareHelperImplTest::GetController(std::make_shared<MockGeneralController>());
@@ -617,6 +645,139 @@ HWTEST_F(DataShareHelperImplTest, SetDataShareHelperExtUri_No_generalCtl_Test001
     std::shared_ptr<MockGeneralController> controller = DataShareHelperImplTest::GetController();
     DataShareHelperImplTest::GetInstance()->generalCtl_ = controller;
     LOG_INFO("SetDataShareHelperExtUri_No_generalCtl_Test001::End");
+}
+
+// Mock remote object for DataShareServiceProxy::CleanInvalidData: SendRequest returns
+// sendResult_ and writes replyStatus_ into the reply parcel. The lastCode_ member records
+// the command code the proxy actually sent for verification.
+class CleanInvalidDataRemoteMock : public IRemoteObject {
+public:
+    CleanInvalidDataRemoteMock(int32_t sendResult, int32_t replyStatus)
+        : IRemoteObject(u"OHOS.DataShare.IDataShareService"), sendResult_(sendResult), replyStatus_(replyStatus)
+    {
+    }
+    ~CleanInvalidDataRemoteMock() = default;
+
+    int32_t GetObjectRefCount()
+    {
+        return 0;
+    }
+    int SendRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option)
+    {
+        lastCode_ = code;
+        (void)data;
+        (void)option;
+        reply.WriteInt32(replyStatus_);
+        return sendResult_;
+    }
+    bool AddDeathRecipient(const sptr<DeathRecipient> &recipient)
+    {
+        (void)recipient;
+        return true;
+    }
+    bool RemoveDeathRecipient(const sptr<DeathRecipient> &recipient)
+    {
+        (void)recipient;
+        return true;
+    }
+    int Dump(int fd, const std::vector<std::u16string> &args)
+    {
+        (void)fd;
+        (void)args;
+        return 0;
+    }
+
+    uint32_t lastCode_ = 0;
+
+private:
+    int32_t sendResult_;
+    int32_t replyStatus_;
+};
+
+/**
+ * @tc.name: CleanInvalidDataTest001
+ * @tc.desc: Verify CleanInvalidData of DataShareHelperImpl returns DATA_SHARE_ERROR when the
+ *           persistent data controller is null (SetUpTestCase sets persistentDataCtl_ to nullptr).
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest001, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest001::Start");
+    std::vector<std::string> validSubscribers = { "1", "2" };
+    int result = DataShareHelperImplTest::GetInstance()->CleanInvalidData(validSubscribers);
+    EXPECT_EQ(result, DATA_SHARE_ERROR);
+    LOG_INFO("CleanInvalidDataTest001::End");
+}
+
+/**
+ * @tc.name: CleanInvalidDataTest002
+ * @tc.desc: Verify CleanInvalidData of DataShareServiceProxy returns DATA_SHARE_ERROR when
+ *           SendRequest fails, and that the base command code is sent directly (no +100 offset).
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest002, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest002::Start");
+    sptr<CleanInvalidDataRemoteMock> remote = new CleanInvalidDataRemoteMock(-1, E_OK);
+    DataShareServiceProxy proxy(remote);
+    std::vector<std::string> validSubscribers = { "1", "2" };
+    int result = proxy.CleanInvalidData(validSubscribers);
+    EXPECT_EQ(result, DATA_SHARE_ERROR);
+    EXPECT_EQ(remote->lastCode_,
+        static_cast<uint32_t>(DistributedShare::DataShare::DataShareServiceInterfaceCode::
+            DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA));
+    LOG_INFO("CleanInvalidDataTest002::End");
+}
+
+/**
+ * @tc.name: CleanInvalidDataTest003
+ * @tc.desc: Verify CleanInvalidData of DataShareServiceProxy returns the status code read from
+ *           the reply parcel when SendRequest succeeds (E_OK passthrough and error passthrough).
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest003, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest003::Start");
+    DataShareServiceProxy okProxy(sptr<IRemoteObject>(new CleanInvalidDataRemoteMock(0, E_OK)));
+    EXPECT_EQ(okProxy.CleanInvalidData({ "1" }), E_OK);
+
+    DataShareServiceProxy errProxy(sptr<IRemoteObject>(new CleanInvalidDataRemoteMock(0, E_ERROR)));
+    EXPECT_EQ(errProxy.CleanInvalidData({ "1" }), E_ERROR);
+    LOG_INFO("CleanInvalidDataTest003::End");
+}
+
+/**
+ * @tc.name: CleanInvalidDataTest004
+ * @tc.desc: Verify the full CleanInvalidData call chain: DataShareHelperImpl with a real
+ *           PersistentDataController and an injected service proxy (mock remote replies E_OK)
+ *           returns E_OK end to end.
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest004, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest004::Start");
+    auto helper = DataShareHelperImplTest::GetInstance();
+    ASSERT_NE(helper, nullptr);
+    auto manager = DataShareManagerImpl::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    auto savedProxy = manager->dataShareService_;
+    sptr<CleanInvalidDataRemoteMock> remote = new CleanInvalidDataRemoteMock(0, E_OK);
+    manager->dataShareService_ = std::make_shared<DataShareServiceProxy>(sptr<IRemoteObject>(remote));
+    auto savedCtl = helper->persistentDataCtl_;
+    helper->persistentDataCtl_ = std::make_shared<PersistentDataController>();
+    std::vector<std::string> validSubscribers = { "1", "2" };
+    int result = helper->CleanInvalidData(validSubscribers);
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(remote->lastCode_,
+        static_cast<uint32_t>(DistributedShare::DataShare::DataShareServiceInterfaceCode::
+            DATA_SHARE_SERVICE_CMD_CLEAN_INVALID_DATA));
+    helper->persistentDataCtl_ = savedCtl;
+    manager->dataShareService_ = savedProxy;
+    LOG_INFO("CleanInvalidDataTest004::End");
 }
 
 } // namespace DataShare

@@ -129,6 +129,7 @@ ani_constructor!(
         "native_off_changeinfo": datashare::native_off_changeinfo,
         "native_off_rdb_data_change": datashare::native_off_rdb_data_change,
         "native_off_published_data_change": datashare::native_off_published_data_change,
+        "native_clean_invalid_data": datashare::native_clean_invalid_data,
         "check_uris": datashare::check_uris,
         "publish_check_uris": datashare::publish_check_uris,
         "native_create_data_proxy_handle": datashare::native_create_data_proxy_handle,

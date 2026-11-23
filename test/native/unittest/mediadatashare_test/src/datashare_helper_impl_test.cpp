@@ -411,6 +411,35 @@ HWTEST_F(DataShareHelperImplTest, DelQueryTemplateTest001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: CleanInvalidDataTest001
+ * @tc.desc: Verify the behavior of the CleanInvalidData function in DataShareHelperImpl when called with a valid
+ *           valid subscriber ID list in an environment without the data share service, ensuring it returns
+ *           DATA_SHARE_ERROR.
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ * @tc.precon:
+    1. The DataShareHelperImpl instance is properly initialized via DataShareHelperImplTest::GetInstance().
+    2. The test environment does not have the data share service (distributeddatamgr service) available, so the
+       service proxy cannot be obtained and the IPC path fails.
+    3. The CleanInvalidData function accepts std::vector<std::string> (validSubscribers) as the input parameter and
+       returns int.
+ * @tc.step:
+    1. Create a valid subscriber ID list as a std::vector<std::string> with entries "1" and "2".
+    2. Call the CleanInvalidData function of the DataShareHelperImpl instance, passing the subscriber ID list.
+    3. Record the returned int result.
+ * @tc.expect:
+    1. The CleanInvalidData function returns DATA_SHARE_ERROR when the service proxy is unavailable.
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest001, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest001::Start");
+    std::vector<std::string> validSubscribers = {"1", "2"};
+    int result = DataShareHelperImplTest::GetInstance()->CleanInvalidData(validSubscribers);
+    EXPECT_EQ(result, DATA_SHARE_ERROR);
+    LOG_INFO("CleanInvalidDataTest001::End");
+}
+
+/**
  * @tc.name: PublishTest001
  * @tc.desc: Verify the behavior of the Publish function in DataShareHelperImpl when called with an empty Data object
  *           and a valid test bundle name, ensuring it returns an empty result vector.

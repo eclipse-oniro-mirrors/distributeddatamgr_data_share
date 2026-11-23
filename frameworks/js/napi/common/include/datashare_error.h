@@ -31,6 +31,7 @@ public:
     static const int EXCEPTION_HELPER_CLOSED = 15700013;
     static const int EXCEPTION_PROXY_PARAMETER_CHECK = 15700014;
     static const int EXCEPTION_NO_PERMISSION_ACCESS_URI = 15700015;
+    static const int EXCEPTION_SUBSCRIBERS_SIZE_INVALID = 15700016;
     virtual ~Error() {};
     virtual std::string GetMessage() const = 0;
     virtual int GetCode() const = 0;

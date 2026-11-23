@@ -43,6 +43,16 @@ int PersistentDataController::DelQueryTemplate(const std::string &uri, int64_t s
     return proxy->DelQueryTemplate(uri, subscriberId);
 }
 
+int PersistentDataController::CleanInvalidData(const std::vector<std::string> &validSubscribers)
+{
+    auto proxy = DataShareManagerImpl::GetServiceProxy();
+    if (proxy == nullptr) {
+        LOG_ERROR("proxy is nullptr");
+        return INVALID_VALUE;
+    }
+    return proxy->CleanInvalidData(validSubscribers);
+}
+
 std::vector<OperationResult> PersistentDataController::SubscribeRdbData(void *subscriber,
     const std::vector<std::string> &uris, const TemplateId &templateId,
     std::function<void(const RdbChangeNode &)> callback)

@@ -1207,6 +1207,30 @@ int DataShareNativeDelTemplate(int64_t dataShareHelperPtr, rust::String uri, rus
     return E_OK;
 }
 
+int DataShareNativeCleanInvalidData(int64_t dataShareHelperPtr, rust::Vec<rust::String> validSubscribers)
+{
+    auto helperHolder = reinterpret_cast<SharedPtrHolder *>(dataShareHelperPtr);
+    if (helperHolder == nullptr || helperHolder->datashareHelper_ == nullptr) {
+        LOG_ERROR("CleanInvalidData failed, helper is nullptr.");
+        return EXCEPTION_HELPER_CLOSED;
+    }
+    if (validSubscribers.empty() || validSubscribers.size() > MAX_VALID_SUBSCRIBERS) {
+        LOG_ERROR("CleanInvalidData failed, validSubscribers size is invalid.");
+        return EXCEPTION_SUBSCRIBERS_SIZE_INVALID;
+    }
+    std::vector<std::string> stdSubscribers = convert_rust_vec_to_cpp_vector(validSubscribers);
+    auto result = helperHolder->datashareHelper_->CleanInvalidData(stdSubscribers);
+    if (result == E_NOT_SYSTEM_APP) {
+        LOG_ERROR("CleanInvalidData failed, not system app.");
+        return EXCEPTION_SYSTEMAPP_CHECK;
+    }
+    if (result != E_OK) {
+        LOG_ERROR("CleanInvalidData failed, result: %{public}d.", result);
+        return EXCEPTION_INNER;
+    }
+    return E_OK;
+}
+
 I32ResultWrap DataShareNativeInsert(int64_t dataShareHelperPtr, rust::String strUri,
     rust::Vec<ValuesBucketKvItem> bucket)
 {

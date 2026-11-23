@@ -43,6 +43,7 @@ public:
     static napi_value Napi_NotifyChange(napi_env env, napi_callback_info info);
     static napi_value Napi_AddTemplate(napi_env env, napi_callback_info info);
     static napi_value Napi_DelTemplate(napi_env env, napi_callback_info info);
+    static napi_value Napi_CleanInvalidData(napi_env env, napi_callback_info info);
     static napi_value Napi_Publish(napi_env env, napi_callback_info info);
     static napi_value Napi_GetPublishedData(napi_env env, napi_callback_info info);
     static napi_value EnableSilentProxy(napi_env env, napi_callback_info info);
@@ -115,6 +116,7 @@ private:
         Data publishData;
         std::string bundleName;
         std::vector<OperationResult> results;
+        std::vector<std::string> validSubscribers;
         UpdateOperations updateOperations;
         std::vector<BatchUpdateResult> batchUpdateResult;
         DataShareObserver::ChangeInfo changeInfo;
@@ -144,6 +146,8 @@ private:
     static void ExecuteCreator(std::shared_ptr<CreateContextInfo> ctxInfo);
     static napi_status ValidateCreateParam(napi_env env, size_t argc, napi_value *argv,
         std::shared_ptr<CreateContextInfo> ctxInfo);
+    static napi_status ValidateCleanInvalidDataParam(napi_env env, size_t argc, napi_value *argv,
+        std::shared_ptr<ContextInfo> context);
 };
 } // namespace DataShare
 } // namespace OHOS
