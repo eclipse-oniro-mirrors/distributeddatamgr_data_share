@@ -53,7 +53,7 @@ constexpr int CALLBACK_SILENCE_US = 100 * 1000;
 
 static bool WaitCallbackReached(std::atomic_int &counter, int expected)
 {
-    for (int i = 0; i < CALLBACK_WAIT_MAX_TIMES; i++)
+    for (int i = 0; i < CALLBACK_WAIT_MAX_TIMES; i++) {
         if (counter.load() >= expected) {
             return true;
         }
@@ -1545,6 +1545,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_003, TestSize.Level0)
         DataProxyErrorCode::SUCCESS);
     EXPECT_EQ(handle->PutValue(g_testMultiSubUri3, "4", std::string("test"), proxyConfig).result_,
         DataProxyErrorCode::SUCCESS);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 3));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 3);
