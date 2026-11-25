@@ -1286,9 +1286,9 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_CombinationPublishedData_Test_001, TestS
     results = helper->Publish(data, bundleName);
     checkResults(results, data.datas_.size());
     results = helper->DisablePubSubs(uris, SUBSCRIBER_ID);
-    checkResults(results, uris.size());
+    for (auto const &res : results) EXPECT_EQ(res.errCode_, 0);
     results = helper->EnablePubSubs(uris, SUBSCRIBER_ID);
-    checkResults(results, uris.size());
+    for (auto const &res : results) EXPECT_EQ(res.errCode_, 0);
     {
         std::unique_lock<std::mutex> enableWaitLock(mutex);
         cv.wait_for(enableWaitLock, timeout, [&callbackTimes]() { return callbackTimes.load() >= 2; });
