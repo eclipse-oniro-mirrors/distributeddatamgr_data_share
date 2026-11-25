@@ -41,6 +41,7 @@ std::string TBL_NAME0 = "name0";
 std::string TBL_NAME1 = "name1";
 constexpr int SUBSCRIBER_ID = 100;
 std::atomic_int g_callbackTimes = 0;
+constexpr int CALLBACK_SILENCE_US = 100 * 1000;
 
 class DataShareHelperProxyTest : public testing::Test {
 public:
@@ -980,6 +981,7 @@ HWTEST_F(DataShareHelperProxyTest, RecoverRdbSubscribe_Test_001, TestSize.Level1
     valuesBucket1.Put(TBL_NAME1, name1);
     int retVal1 = helper->Insert(uri, valuesBucket1);
     EXPECT_GT(retVal1, 0);
+    usleep(CALLBACK_SILENCE_US);
     EXPECT_EQ(callbackTimes, 0);
 
     RdbSubscriberManager::GetInstance().callbacks_.erase(key);

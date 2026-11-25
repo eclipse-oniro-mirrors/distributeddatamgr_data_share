@@ -47,6 +47,20 @@ std::atomic_int g_callbackTimes = 0;
 std::atomic_int g_lockedCallbackTimes = 0;
 std::mutex g_callbackMutex;
 constexpr const char* APPID_PLACEHOLDER = "123456789";
+constexpr int CALLBACK_WAIT_INTERVAL_US = 10 * 1000;
+constexpr int CALLBACK_WAIT_MAX_TIMES = 100;
+constexpr int CALLBACK_SILENCE_US = 100 * 1000;
+
+static bool WaitCallbackReached(std::atomic_int &counter, int expected)
+{
+    for (int i = 0; i < CALLBACK_WAIT_MAX_TIMES; i++) {
+        if (counter.load() >= expected) {
+            return true;
+        }
+        usleep(CALLBACK_WAIT_INTERVAL_US);
+    }
+    return counter.load() >= expected;
+}
 
 class DataProxyHandleTest : public testing::Test {
 public:
@@ -531,7 +545,9 @@ HWTEST_F(DataProxyHandleTest, Subscribe_Test_001, TestSize.Level0)
     std::vector<DataShareProxyData> proxyData2;
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
     EXPECT_EQ(g_callbackTimes, 1);
+    handle->UnsubscribeProxyData(uris);
     LOG_INFO("DataProxyHandleTest_Subscribe_Test_001::End");
 }
 
@@ -633,13 +649,21 @@ HWTEST_F(DataProxyHandleTest, Unsubscribe_Test_001, TestSize.Level0)
     std::vector<DataShareProxyData> proxyData2;
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
+    EXPECT_GE(g_callbackTimes, 1);
+    int32_t callbackTimesBeforeUnsub = g_callbackTimes.load();
 
     // unsubscribe data success
     ret4 = handle->UnsubscribeProxyData(uris);
 
-
+    DataProxyValue value3 = "world_after_unsub";
+    DataShareProxyData data3(g_testUri1, value3);
+    std::vector<DataShareProxyData> proxyData3;
+    proxyData3.push_back(data3);
     // publish data and not do callback
-    handle->PublishProxyData(proxyData2, proxyConfig);
+    handle->PublishProxyData(proxyData3, proxyConfig);
+    usleep(CALLBACK_SILENCE_US);
+    EXPECT_EQ(g_callbackTimes, callbackTimesBeforeUnsub);
     LOG_INFO("DataProxyHandleTest_Unsubscribe_Test_001::End");
 }
 
@@ -698,13 +722,22 @@ HWTEST_F(DataProxyHandleTest, Unsubscribe_Test_002, TestSize.Level0)
     std::vector<DataShareProxyData> proxyData2;
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
+    EXPECT_GE(g_callbackTimes, 1);
+    int32_t callbackTimesBeforeUnsub = g_callbackTimes.load();
 
     // unsubscribe all uris success
     std::vector<std::string> emptyUris;
     auto ret2 = handle->UnsubscribeProxyData(emptyUris);
 
-    // publish data and not do callback
-    handle->PublishProxyData(proxyData2, proxyConfig);
+    // publish changed data and no callback should be delivered after unsubscribe
+    DataProxyValue value3 = "world_after_unsub";
+    DataShareProxyData data3(g_testUri1, value3);
+    std::vector<DataShareProxyData> proxyData3;
+    proxyData3.push_back(data3);
+    handle->PublishProxyData(proxyData3, proxyConfig);
+    usleep(CALLBACK_SILENCE_US);
+    EXPECT_EQ(g_callbackTimes, callbackTimesBeforeUnsub);
     LOG_INFO("DataProxyHandleTest_Unsubscribe_Test_002::End");
 }
 
@@ -917,6 +950,7 @@ HWTEST_F(DataProxyHandleTest, Subscribe_Truncate_Test_001, TestSize.Level0)
     auto publishRet2 = handle->PublishProxyData(proxyData2, publishConfig);
     EXPECT_EQ(publishRet2[0].result_, DataProxyErrorCode::SUCCESS);
 
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
     EXPECT_EQ(g_callbackTimes, 1);
     EXPECT_EQ(receivedValue.size(), static_cast<size_t>(DataProxyMaxValueLength::MAX_LENGTH_4K));
 
@@ -995,6 +1029,7 @@ HWTEST_F(DataProxyHandleTest, Subscribe_Truncate_Test_002, TestSize.Level0)
     auto publishRet2 = handle->PublishProxyData(proxyData2, config);
     EXPECT_EQ(publishRet2[0].result_, DataProxyErrorCode::SUCCESS);
 
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
     EXPECT_EQ(g_callbackTimes, 1);
     EXPECT_EQ(receivedValue.size(), largeString.size());
 
@@ -1139,6 +1174,7 @@ HWTEST_F(DataProxyHandleTest, Subscribe_NonStringNoTruncate_Test_001, TestSize.L
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
 
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
     EXPECT_EQ(g_callbackTimes, 1);
     EXPECT_EQ(receivedValue, intValue);
 
@@ -1214,6 +1250,7 @@ HWTEST_F(DataProxyHandleTest, Subscribe_StringWithinLimit_Test_001, TestSize.Lev
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
 
+    EXPECT_TRUE(WaitCallbackReached(g_callbackTimes, 1));
     EXPECT_EQ(g_callbackTimes, 1);
     EXPECT_EQ(receivedValue, normalString);
     EXPECT_EQ(receivedValue.size(), normalString.size());
@@ -1363,6 +1400,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_001, TestSize.Level0)
 
     auto putRet = handle->PutValue(g_testMultiSubUri1, "2", "newValue", proxyConfig);
     EXPECT_EQ(putRet.result_, DataProxyErrorCode::SUCCESS);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 1));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 1);
@@ -1433,6 +1471,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_002, TestSize.Level0)
 
     auto removeRet = handle->RemoveValue(g_testMultiSubUri2, "1", proxyConfig);
     EXPECT_EQ(removeRet.result_, DataProxyErrorCode::SUCCESS);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 1));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 1);
@@ -1506,6 +1545,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_003, TestSize.Level0)
         DataProxyErrorCode::SUCCESS);
     EXPECT_EQ(handle->PutValue(g_testMultiSubUri3, "4", std::string("test"), proxyConfig).result_,
         DataProxyErrorCode::SUCCESS);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 3));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 3);
@@ -1570,6 +1610,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_004, TestSize.Level0)
     std::vector<DataShareProxyData> proxyData2;
     proxyData2.push_back(data2);
     handle->PublishProxyData(proxyData2, proxyConfig);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 1));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 1);
@@ -1631,6 +1672,7 @@ HWTEST_F(DataProxyHandleTest, UnsubscribeMultiValues_Test_001, TestSize.Level0)
     EXPECT_EQ(subRet[0].result_, DataProxyErrorCode::SUCCESS);
 
     handle->PutValue(g_testMultiSubUri4, "2", 200, proxyConfig);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 1));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 1);
@@ -1640,6 +1682,7 @@ HWTEST_F(DataProxyHandleTest, UnsubscribeMultiValues_Test_001, TestSize.Level0)
     EXPECT_EQ(unsubRet[0].result_, DataProxyErrorCode::SUCCESS);
 
     handle->PutValue(g_testMultiSubUri4, "3", 300, proxyConfig);
+    usleep(CALLBACK_SILENCE_US);
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 1);
@@ -1714,6 +1757,7 @@ HWTEST_F(DataProxyHandleTest, SubscribeMultiValues_Test_005, TestSize.Level0)
     newProxyData.push_back(newData);
     auto repubRet = handle->PublishProxyData(newProxyData, proxyConfig);
     EXPECT_EQ(repubRet[0].result_, DataProxyErrorCode::SUCCESS);
+    EXPECT_TRUE(WaitCallbackReached(g_lockedCallbackTimes, 2));
     {
         std::lock_guard<std::mutex> lock(g_callbackMutex);
         EXPECT_EQ(g_lockedCallbackTimes, 2);

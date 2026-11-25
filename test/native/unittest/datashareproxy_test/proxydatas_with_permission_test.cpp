@@ -176,6 +176,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_QUERY_Test_001, TestSize.Level1)
     int result = 0;
     resultSet->GetRowCount(result);
     EXPECT_EQ(result, 1);
+    resultSet->Close();
     LOG_INFO("ProxyDatasTest_QUERY_Test_001::End");
 }
 
@@ -216,6 +217,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_QueryTimeout_Test_001, TestSize.Level1)
     auto resultSet = helper->Query(uri, predicates, columns, option, &businessError);
     EXPECT_NE(resultSet, nullptr);
     EXPECT_EQ(businessError.GetCode(), E_OK);
+    resultSet->Close();
     LOG_INFO("ProxyDatasTest_QueryTimeout_Test_001::End");
 }
 
@@ -269,6 +271,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_QueryTimeout_Test_002, TestSize.Level1)
         int result = 0;
         resultSet->GetRowCount(result);
         EXPECT_EQ(result, 1);
+        resultSet->Close();
     }
     LOG_INFO("ProxyDatasTest_QueryTimeout_Test_002::End");
 }
@@ -325,6 +328,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_QueryTimeout_Test_003, TestSize.Level1)
             int result = 0;
             resultSet->GetRowCount(result);
             EXPECT_EQ(result, 1);
+            resultSet->Close();
         }
     };
     int threadNum = 10; // 10 is the number of threads.
@@ -390,6 +394,9 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_QueryTimeout_Test_004, TestSize.Level1)
             auto resultSet = helper->Query(uri, predicates, columns, option, &businessError);
             if (businessError.GetCode() == E_TIMEOUT_ERROR) {
                 count++;
+            }
+            if (resultSet != nullptr) {
+                resultSet->Close();
             }
         });
     }
@@ -494,6 +501,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_ResultSet_Test_001, TestSize.Level1)
     int intValue;
     result = resultSet->GetInt(0, intValue);
     EXPECT_EQ(result, E_ERROR);
+    resultSet->Close();
     LOG_INFO("ProxyDatasTest_ResultSet_Test_001::End");
 }
 
@@ -697,6 +705,7 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_Template_Test_003, TestSize.Level1)
     int queryResult = 0;
     resultSet->GetRowCount(queryResult);
     EXPECT_EQ(queryResult, 1);
+    resultSet->Close();
 
     std::vector<OperationResult> results2 = helper->UnsubscribeRdbData(uris, tplId);
     EXPECT_EQ(results2.size(), uris.size());
@@ -1127,6 +1136,10 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_CombinationRdbData_Test_002, TestSize.Le
     for (auto const &result : results) EXPECT_EQ(result.errCode_, 0);
     results = helper->EnableRdbSubs(uris, tplId);
     for (auto const &result : results) EXPECT_EQ(result.errCode_, 0);
+    {
+        std::unique_lock<std::mutex> enableWaitLock(mutex);
+        cv.wait_for(enableWaitLock, timeout, [&callbackTimes]() { return callbackTimes.load() >= 2; });
+    }
     EXPECT_EQ(callbackTimes, 2);
     helper->UnsubscribeRdbData(uris, tplId);
     helper2->UnsubscribeRdbData(uris, tplId);
@@ -1243,9 +1256,12 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_CombinationPublishedData_Test_001, TestS
     std::string bundleName = "com.acts.ohos.data.datasharetest";
     Data data;
     data.datas_.emplace_back(DATA_SHARE_PROXY_URI, SUBSCRIBER_ID, "value1");
+    auto checkResults = [](const std::vector<OperationResult> &r, size_t n) {
+        EXPECT_EQ(r.size(), n);
+        for (auto const &res : r) EXPECT_EQ(res.errCode_, 0);
+    };
     std::vector<OperationResult> results = helper->Publish(data, bundleName);
-    EXPECT_EQ(results.size(), data.datas_.size());
-    for (auto const &result : results) EXPECT_EQ(result.errCode_, 0);
+    checkResults(results, data.datas_.size());
     std::vector<std::string> uris = {DATA_SHARE_PROXY_URI};
     std::atomic_int callbackTimes = 0;
     std::mutex mutex;
@@ -1257,29 +1273,26 @@ HWTEST_F(ProxyDatasTest, ProxyDatasTest_CombinationPublishedData_Test_001, TestS
             callbackTimes++;
             cv.notify_all();
         });
-    EXPECT_EQ(results.size(), uris.size());
-    for (auto const &operationResult : results) EXPECT_EQ(operationResult.errCode_, 0);
+    checkResults(results, uris.size());
     // if there is only one subscriber in a key, the subscriber can't be disabled twice
     results = helper2->SubscribePublishedData(uris, SUBSCRIBER_ID, [](const PublishedDataChangeNode &changeNode) {});
-    EXPECT_EQ(results.size(), uris.size());
-    for (auto const &operationResult : results) {
-        EXPECT_EQ(operationResult.errCode_, 0);
-    }
+    checkResults(results, uris.size());
     std::unique_lock<std::mutex> lock(mutex);
-    cv.wait_for(lock, timeout);
+    cv.wait_for(lock, timeout, [&callbackTimes]() { return callbackTimes.load() >= 1; });
     EXPECT_EQ(callbackTimes, 1);
     lock.unlock();
     results = helper->DisablePubSubs(uris, SUBSCRIBER_ID);
-    EXPECT_EQ(results.size(), uris.size());
-    for (auto const &operationResult : results) EXPECT_EQ(operationResult.errCode_, 0);
-
+    checkResults(results, uris.size());
     results = helper->Publish(data, bundleName);
-    EXPECT_EQ(results.size(), data.datas_.size());
-    for (auto const &result : results) EXPECT_EQ(result.errCode_, 0);
+    checkResults(results, data.datas_.size());
     results = helper->DisablePubSubs(uris, SUBSCRIBER_ID);
-    for (auto const &operationResult : results) EXPECT_EQ(operationResult.errCode_, 0);
+    for (auto const &res : results) EXPECT_EQ(res.errCode_, 0);
     results = helper->EnablePubSubs(uris, SUBSCRIBER_ID);
-    for (auto const &operationResult : results) EXPECT_EQ(operationResult.errCode_, 0);
+    for (auto const &res : results) EXPECT_EQ(res.errCode_, 0);
+    {
+        std::unique_lock<std::mutex> enableWaitLock(mutex);
+        cv.wait_for(enableWaitLock, timeout, [&callbackTimes]() { return callbackTimes.load() >= 2; });
+    }
     EXPECT_EQ(callbackTimes, 2);
     helper->UnsubscribePublishedData(uris, SUBSCRIBER_ID);
     helper2->UnsubscribePublishedData(uris, SUBSCRIBER_ID);
