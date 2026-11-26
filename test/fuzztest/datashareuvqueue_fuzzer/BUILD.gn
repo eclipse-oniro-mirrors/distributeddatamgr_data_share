@@ -21,6 +21,7 @@ ohos_fuzztest("DataShareUvQueueFuzzTest") {
 
   include_dirs = [
     "${datashare_innerapi_path}/common/include",
+    "${datashare_common_native_path}/include",
     "${datashare_native_provider_path}/include",
   ]
 
