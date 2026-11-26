@@ -91,8 +91,7 @@ void BuildAndVerifyFuzz(FuzzedDataProvider &fdp)
                 break;
         }
     }
-    predicates.LimitBy(fdp.ConsumeIntegral<int32_t>(), fdp.ConsumeIntegral<int32_t>());
-    predicates.Offset(fdp.ConsumeIntegral<int32_t>());
+    predicates.Limit(fdp.ConsumeIntegral<int32_t>(), fdp.ConsumeIntegral<int32_t>());
 
     DataSharePredicatesVerify verifier;
     verifier.VerifyPredicates(predicates);
