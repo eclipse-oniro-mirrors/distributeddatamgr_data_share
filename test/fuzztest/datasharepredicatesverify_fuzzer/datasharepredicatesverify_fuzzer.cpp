@@ -122,7 +122,7 @@ void SerializeRoundTripFuzz(FuzzedDataProvider &fdp)
         OperationItem item;
         item.operation = fdp.ConsumeIntegral<int32_t>();
         item.singleParams.push_back(fdp.ConsumeIntegral<int64_t>());
-        item.para1 = fdp.ConsumeFloatingPoint<double>();
+        item.multiParams.push_back(ConsumeString(fdp));
         operations.push_back(item);
     }
     DataSharePredicates predicates;
