@@ -116,7 +116,7 @@ void RoundTripValuesBucketFuzz(FuzzedDataProvider &fdp)
     uint8_t count = fdp.ConsumeIntegral<uint8_t>() % MAX_CONTAINER_COUNT;
     for (uint8_t i = 0; i < count; i++) {
         std::string key = ConsumeString(fdp);
-        bucket.valuesMap[key] = ConsumeValueObject(fdp);
+        bucket.valuesMap[key] = ConsumeValueObject(fdp).value;
     }
     RoundTrip(fdp, bucket);
 }
@@ -182,7 +182,7 @@ void RoundTripChangeNodesFuzz(FuzzedDataProvider &fdp)
 void RoundTripSmallObjectsFuzz(FuzzedDataProvider &fdp)
 {
     TimedQueryUriInfo timedQueryUriInfo;
-    timedQueryUriInfo.uri_ = ConsumeUriFromPool(fdp);
+    timedQueryUriInfo.uri = ConsumeUriFromPool(fdp);
     RoundTrip(fdp, timedQueryUriInfo);
 
     SubscribeOption subscribeOption;
