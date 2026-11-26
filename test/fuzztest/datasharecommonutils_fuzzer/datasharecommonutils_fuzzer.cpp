@@ -32,7 +32,7 @@ constexpr size_t MAX_TEXT_LENGTH = 64;
 // Pool size of the semantic uri pool.
 constexpr size_t URI_POOL_SIZE = 5;
 
-// Semantic uri pool drives the branch splitting of DataShareUriUtils
+// Semantic uri pool drives the branch splitting of DataShareURIUtils
 // (user param, SAID extraction, first path segment and query splitting).
 constexpr const char *URI_POOL[] = {
     "datashare://com.example.provider/appendix/table?user=100",
@@ -60,25 +60,25 @@ constexpr size_t TARGET_SIZE = 7;
 // overflow and invalid-format fault paths).
 void UriAnalyzeFuzz(FuzzedDataProvider &fdp)
 {
-    DataShareUriUtils::ExtractFirstPathSegment(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
-    DataShareUriUtils::Strtoul(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
+    DataShareURIUtils::ExtractFirstPathSegment(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
+    DataShareURIUtils::Strtoul(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
 }
 
 void UriQueryParamsFuzz(FuzzedDataProvider &fdp)
 {
-    DataShareUriUtils::GetQueryParams(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
+    DataShareURIUtils::GetQueryParams(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
 }
 
 void UriUserAndSaidFuzz(FuzzedDataProvider &fdp)
 {
     std::string uri = fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH);
-    DataShareUriUtils::GetUserFromUri(uri);
-    DataShareUriUtils::GetSystemAbilityId(uri);
+    DataShareURIUtils::GetUserFromUri(uri);
+    DataShareURIUtils::GetSystemAbilityId(uri);
 }
 
 void UriFormatFuzz(FuzzedDataProvider &fdp)
 {
-    DataShareUriUtils::FormatUri(URI_POOL[fdp.ConsumeIntegral<uint8_t>() % URI_POOL_SIZE]);
+    DataShareURIUtils::FormatUri(URI_POOL[fdp.ConsumeIntegral<uint8_t>() % URI_POOL_SIZE]);
 }
 
 // Anonymous/Change drive the masking branches of DataShareStringUtils.
