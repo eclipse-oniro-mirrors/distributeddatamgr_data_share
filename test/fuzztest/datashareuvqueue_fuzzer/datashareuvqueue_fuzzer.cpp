@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 
 #include "datashare_uv_queue.h"
 
@@ -55,7 +56,7 @@ void CheckFuncFuzz(FuzzedDataProvider &fdp)
     if (fdp.ConsumeBool()) {
         queue.CheckFuncAndExec([]() { return true; });
     } else {
-        queue.CheckFuncAndExec(DataShareUvQueue::BoolFunc());
+        queue.CheckFuncAndExec(std::function<bool()>());
     }
 }
 } // namespace OHOS
