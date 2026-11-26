@@ -20,5 +20,9 @@ group("fuzztest") {
   deps += [
     "//foundation/distributeddatamgr/data_share/test/fuzztest/datasharehelp_fuzzer:fuzztest",
     "//foundation/distributeddatamgr/data_share/test/fuzztest/datasharestub_fuzzer:fuzztest",
+    "//foundation/distributeddatamgr/data_share/test/fuzztest/datashareitypesutils_fuzzer:fuzztest",
+    "//foundation/distributeddatamgr/data_share/test/fuzztest/datasharepredicatesverify_fuzzer:fuzztest",
+    "//foundation/distributeddatamgr/data_share/test/fuzztest/datasharecommonutils_fuzzer:fuzztest",
+    "//foundation/distributeddatamgr/data_share/test/fuzztest/datashareuvqueue_fuzzer:fuzztest",
   ]
 }
