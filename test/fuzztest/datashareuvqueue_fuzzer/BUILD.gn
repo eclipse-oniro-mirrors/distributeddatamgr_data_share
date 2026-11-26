@@ -36,9 +36,12 @@ ohos_fuzztest("DataShareUvQueueFuzzTest") {
     "-fno-omit-frame-pointer",
   ]
 
-  sources = [ "datashareuvqueue_fuzzer.cpp" ]
+  sources = [
+    "datashareuvqueue_fuzzer.cpp",
+    "${datashare_native_provider_path}/src/datashare_uv_queue.cpp",
+  ]
 
-  deps = [ "${datashare_innerapi_path}:datashare_provider" ]
+  deps = [ "${datashare_innerapi_path}/common:datashare_common" ]
 
   external_deps = [
     "c_utils:utils",
