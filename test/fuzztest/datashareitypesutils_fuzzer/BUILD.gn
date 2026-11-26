@@ -45,6 +45,7 @@ ohos_fuzztest("DataShareITypesUtilsFuzzTest") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "kv_store:distributeddata_inner",
   ]
 }
 
