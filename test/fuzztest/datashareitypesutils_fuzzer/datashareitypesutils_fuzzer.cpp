@@ -123,15 +123,10 @@ void RoundTripValuesBucketFuzz(FuzzedDataProvider &fdp)
 
 void RoundTripTemplateFuzz(FuzzedDataProvider &fdp)
 {
-    Template tplt;
-    tplt.update_ = ConsumeString(fdp);
-    tplt.scheduler_ = ConsumeString(fdp);
-    uint8_t count = fdp.ConsumeIntegral<uint8_t>() % MAX_CONTAINER_COUNT;
-    for (uint8_t i = 0; i < count; i++) {
-        std::string key = ConsumeString(fdp);
-        tplt.predicates_.emplace_back(key, ConsumeString(fdp));
-    }
-    RoundTrip(fdp, tplt);
+    PredicateTemplateNode node;
+    node.key_ = ConsumeString(fdp);
+    node.selectSql_ = ConsumeString(fdp);
+    RoundTrip(fdp, node);
 }
 
 void RoundTripDataFuzz(FuzzedDataProvider &fdp)
