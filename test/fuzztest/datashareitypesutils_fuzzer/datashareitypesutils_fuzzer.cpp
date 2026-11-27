@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <fuzzer/FuzzedDataProvider.h>
-
 #include "datashareitypesutils_fuzzer.h"
+
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -34,6 +34,13 @@ constexpr size_t MAX_TEXT_LENGTH = 64;
 constexpr uint8_t MAX_CONTAINER_COUNT = 4;
 // Variant selector count of the value types.
 constexpr uint8_t VALUE_KIND_COUNT = 4;
+// Value kinds dispatched by the value object building switch.
+enum ValueKind : uint8_t {
+    VALUE_KIND_INTEGER = 0,
+    VALUE_KIND_FLOATING,
+    VALUE_KIND_TEXT,
+    VALUE_KIND_BOOL,
+};
 // Max count of the predicate operation chain.
 constexpr uint8_t MAX_OPERATION_COUNT = 4;
 // Pool size of the semantic uri pool.
@@ -74,11 +81,11 @@ std::string ConsumeString(FuzzedDataProvider &fdp)
 DataShareValueObject ConsumeValueObject(FuzzedDataProvider &fdp)
 {
     switch (fdp.ConsumeIntegral<uint8_t>() % VALUE_KIND_COUNT) {
-        case 0:
+        case VALUE_KIND_INTEGER:
             return fdp.ConsumeIntegral<int64_t>();
-        case 1:
+        case VALUE_KIND_FLOATING:
             return fdp.ConsumeFloatingPoint<double>();
-        case 2:
+        case VALUE_KIND_TEXT:
             return ConsumeString(fdp);
         default:
             return fdp.ConsumeBool();
@@ -87,8 +94,7 @@ DataShareValueObject ConsumeValueObject(FuzzedDataProvider &fdp)
 
 // Marshals an object into a parcel and unmarshals it back, covering both
 // serialization branches (type/length checks) and deserialization branches.
-template<typename T>
-void RoundTrip(FuzzedDataProvider &fdp, T &value)
+template<typename T> void RoundTrip(FuzzedDataProvider &fdp, T &value)
 {
     MessageParcel parcel;
     if (!ITypesUtil::Marshalling(value, parcel)) {
@@ -146,8 +152,7 @@ void RoundTripUpdateOperationFuzz(FuzzedDataProvider &fdp)
 {
     UpdateOperation operation;
     operation.predicates.SetWhereClause(fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH));
-    operation.valuesBucket.valuesMap[fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH)] =
-        fdp.ConsumeIntegral<int64_t>();
+    operation.valuesBucket.valuesMap[fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH)] = fdp.ConsumeIntegral<int64_t>();
     RoundTrip(fdp, operation);
     BatchUpdateResult result;
     result.uri = fdp.ConsumeRandomLengthString(MAX_TEXT_LENGTH);
@@ -193,8 +198,7 @@ void RoundTripSmallObjectsFuzz(FuzzedDataProvider &fdp)
 // can never produce.
 void RawParcelUnmarshallingFuzz(FuzzedDataProvider &fdp)
 {
-    std::vector<uint8_t> raw = fdp.ConsumeBytes<uint8_t>(
-        fdp.ConsumeIntegral<uint8_t>() % (MAX_TEXT_LENGTH + 1));
+    std::vector<uint8_t> raw = fdp.ConsumeBytes<uint8_t>(fdp.ConsumeIntegral<uint8_t>() % (MAX_TEXT_LENGTH + 1));
     MessageParcel parcel;
     parcel.WriteUInt8Vector(raw);
 

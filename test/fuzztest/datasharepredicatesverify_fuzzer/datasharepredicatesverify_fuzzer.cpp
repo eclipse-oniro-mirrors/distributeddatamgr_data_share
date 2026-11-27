@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <fuzzer/FuzzedDataProvider.h>
-
 #include "datasharepredicatesverify_fuzzer.h"
+
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -33,6 +33,20 @@ constexpr size_t MAX_TEXT_LENGTH = 64;
 constexpr uint8_t MAX_OPERATION_COUNT = 6;
 // Selector count of the predicate operation kinds.
 constexpr uint8_t OPERATION_KIND_COUNT = 10;
+
+// Predicate operation kinds dispatched by the operation building switch.
+enum OperationKind : uint8_t {
+    OP_EQUAL_TO = 0,
+    OP_NOT_EQUAL_TO,
+    OP_GREATER_THAN,
+    OP_LESS_THAN,
+    OP_CONTAINS,
+    OP_BEGINS_WITH,
+    OP_LIKE,
+    OP_GLOB,
+    OP_IS_NULL,
+    OP_ORDER_BY_ASC,
+};
 
 // Dispatch targets of the entry switch, indexed by the first consumed byte.
 enum FuzzTarget : uint8_t {
@@ -59,31 +73,31 @@ void BuildAndVerifyFuzz(FuzzedDataProvider &fdp)
         std::string field = ConsumeString(fdp);
         std::string value = ConsumeString(fdp);
         switch (fdp.ConsumeIntegral<uint8_t>() % OPERATION_KIND_COUNT) {
-            case 0:
+            case OP_EQUAL_TO:
                 predicates.EqualTo(field, value);
                 break;
-            case 1:
+            case OP_NOT_EQUAL_TO:
                 predicates.NotEqualTo(field, value);
                 break;
-            case 2:
+            case OP_GREATER_THAN:
                 predicates.GreaterThan(field, value);
                 break;
-            case 3:
+            case OP_LESS_THAN:
                 predicates.LessThan(field, value);
                 break;
-            case 4:
+            case OP_CONTAINS:
                 predicates.Contains(field, value);
                 break;
-            case 5:
+            case OP_BEGINS_WITH:
                 predicates.BeginsWith(field, value);
                 break;
-            case 6:
+            case OP_LIKE:
                 predicates.Like(field, value);
                 break;
-            case 7:
+            case OP_GLOB:
                 predicates.Glob(field, value);
                 break;
-            case 8:
+            case OP_IS_NULL:
                 predicates.IsNull(field);
                 break;
             default:
@@ -121,7 +135,7 @@ void SerializeRoundTripFuzz(FuzzedDataProvider &fdp)
         OperationItem item;
         item.operation = fdp.ConsumeIntegral<int32_t>();
         item.singleParams.push_back(fdp.ConsumeIntegral<int64_t>());
-        item.multiParams.push_back(std::vector<std::string>{ConsumeString(fdp)});
+        item.multiParams.push_back(std::vector<std::string>{ ConsumeString(fdp) });
         operations.push_back(item);
     }
     DataSharePredicates predicates;
