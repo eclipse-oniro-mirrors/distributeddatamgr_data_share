@@ -780,5 +780,25 @@ HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest004, TestSize.Level0)
     LOG_INFO("CleanInvalidDataTest004::End");
 }
 
+/**
+ * @tc.name: CleanInvalidDataTest005
+ * @tc.desc: Verify the base class default implementation of CleanInvalidData in DataShareHelper
+ *           returns E_UNIMPLEMENT when explicitly invoked via a qualified call. The DataShareHelperImpl
+ *           override otherwise shadows the base default, so the default body { return E_UNIMPLEMENT; }
+ *           declared in datashare_helper.h is only reached through DataShareHelper::CleanInvalidData.
+ * @tc.type: FUNC
+ * @tc.require: issueIC8OCN
+ */
+HWTEST_F(DataShareHelperImplTest, CleanInvalidDataTest005, TestSize.Level0)
+{
+    LOG_INFO("CleanInvalidDataTest005::Start");
+    auto helper = DataShareHelperImplTest::GetInstance();
+    ASSERT_NE(helper, nullptr);
+    std::vector<std::string> validSubscribers = { "1", "2" };
+    int result = helper->DataShareHelper::CleanInvalidData(validSubscribers);
+    EXPECT_EQ(result, E_UNIMPLEMENT);
+    LOG_INFO("CleanInvalidDataTest005::End");
+}
+
 } // namespace DataShare
 } // namespace OHOS
